@@ -64,6 +64,7 @@ const Header: React.FC = () => {
                     className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
                   />
                   <span className="text-gray-700">{currentUser?.name.split(' ')[0]}</span>
+                  <span className="text-gray-700">{currentUser?.name?.split(' ')[0] || 'User'}</span>
                 </button>
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
                   <div className="py-1">
