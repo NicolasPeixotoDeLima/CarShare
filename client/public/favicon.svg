@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="CarShare">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5C26B"/>
+      <stop offset="1" stop-color="#D9893B"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="9" fill="url(#g)"/>
+  <path d="M21.5 10 A7 7 0 1 0 21.5 22" stroke="#1A1410" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+  <circle cx="24" cy="22" r="1.8" fill="#1A1410"/>
+</svg>

@@ -1,0 +1,148 @@
+/* ============================================================
+   CarShare — sistema global de animacoes
+   Conjunto pequeno de keyframes + utilitarios reusaveis.
+   Tudo opera em transform/opacity (GPU-accelerated).
+   ============================================================ */
+
+:root {
+  --ease-out:        cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:     cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:        140ms;
+  --dur-base:        220ms;
+  --dur-slow:        420ms;
+  --dur-page:        520ms;
+}
+
+/* ============ KEYFRAMES ============ */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes fade-in-right {
+  from { opacity: 0; transform: translate3d(-12px, 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -480px 0; }
+  100% { background-position:  480px 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.74 0.13 155 / .5); }
+  50%      { box-shadow: 0 0 0 6px oklch(0.74 0.13 155 / 0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bar-grow {
+  from { transform: scaleY(0); transform-origin: bottom; }
+  to   { transform: scaleY(1); transform-origin: bottom; }
+}
+
+@keyframes slide-in-down {
+  from { opacity: 0; transform: translate3d(0, -8px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* ============ UTILITARIOS ============ */
+
+.anim-fade-in       { animation: fade-in       var(--dur-base) var(--ease-out) both; }
+.anim-fade-in-up    { animation: fade-in-up    var(--dur-base) var(--ease-out) both; }
+.anim-fade-in-right { animation: fade-in-right var(--dur-base) var(--ease-out) both; }
+.anim-scale-in      { animation: scale-in      var(--dur-base) var(--ease-spring) both; }
+.anim-page          { animation: fade-in-up    var(--dur-page) var(--ease-out) both; }
+
+/* Wrapper global aplicado em App.tsx com key={location.pathname}.
+   Toda mudanca de rota dispara a entrada da pagina inteira. */
+.page-transition {
+  animation: fade-in-up var(--dur-page) var(--ease-out) both;
+}
+
+/* Stagger via --i: 0,1,2... no inline style.
+   Cada item entra com 60ms de atraso adicional. */
+.stagger > *        { animation: fade-in-up var(--dur-base) var(--ease-out) both;
+                      animation-delay: calc(var(--i, 0) * 60ms); }
+.stagger-fast > *   { animation: fade-in-up 180ms var(--ease-out) both;
+                      animation-delay: calc(var(--i, 0) * 40ms); }
+
+/* ============ SKELETON / SHIMMER ============ */
+
+.sk {
+  position: relative;
+  overflow: hidden;
+  background: oklch(1 0 0 / .04);
+  border-radius: 8px;
+}
+html[data-theme='light'] .sk { background: oklch(0 0 0 / .05); }
+.sk::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(1 0 0 / .06) 50%,
+    transparent 100%
+  );
+  background-size: 480px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+html[data-theme='light'] .sk::after {
+  background: linear-gradient(90deg, transparent 0%, oklch(0 0 0 / .06) 50%, transparent 100%);
+  background-size: 480px 100%;
+}
+.sk-line  { height: 12px; }
+.sk-block { height: 80px; }
+
+/* ============ LOADING SPINNER ============ */
+
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--line);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 720ms linear infinite;
+  display: inline-block;
+}
+.spinner--sm { width: 12px; height: 12px; border-width: 1.5px; }
+.spinner--lg { width: 28px; height: 28px; border-width: 2.5px; }
+
+/* ============ TRANSICOES BASE ============ */
+
+button, a, .interactive {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color     var(--dur-fast) var(--ease-out),
+    color            var(--dur-fast) var(--ease-out),
+    transform        var(--dur-fast) var(--ease-out),
+    box-shadow       var(--dur-base) var(--ease-out),
+    opacity          var(--dur-fast) var(--ease-out);
+}
+
+/* Press feedback nos botoes interativos */
+.press:active { transform: scale(0.97); }
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

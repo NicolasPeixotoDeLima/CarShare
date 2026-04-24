@@ -1,0 +1,182 @@
+.success-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 80px 30px;
+  text-align: center;
+  position: relative;
+}
+
+.success-burst {
+  width: 120px; height: 120px;
+  margin: 0 auto 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(0.82 0.14 75 / .3), transparent 70%);
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.success-burst::before {
+  content: '';
+  position: absolute;
+  inset: 20px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 40px var(--amber);
+  animation: burst 2s ease-out infinite;
+}
+@keyframes burst {
+  0%   { transform: scale(1);   opacity: 1;   }
+  50%  { transform: scale(1.2); opacity: .6;  }
+  100% { transform: scale(1);   opacity: 1;   }
+}
+.success-burst svg { position: relative; z-index: 2; color: oklch(0.15 0 0); }
+
+.success-eyebrow {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin-bottom: 16px;
+}
+.success-h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(48px, 7vw, 88px);
+  line-height: .95;
+  font-weight: 400;
+  letter-spacing: -.02em;
+}
+.success-h1 .italic { color: var(--amber); }
+
+.success-lead {
+  font-size: 17px;
+  color: var(--fg-dim);
+  line-height: 1.55;
+  margin: 20px auto 40px;
+  max-width: 480px;
+}
+
+.receipt {
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 28px;
+  margin: 40px 0;
+}
+.receipt__head {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 18px;
+}
+.receipt__head .label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--fg-mute);
+  letter-spacing: .12em;
+}
+.receipt__head .v {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+}
+.receipt__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--fg-dim);
+}
+.receipt__row .v { color: var(--fg); font-weight: 500; }
+.receipt__row--total {
+  padding-top: 16px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 16px;
+  color: var(--fg);
+}
+.receipt__row--total .v {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.delivery-eta {
+  background: linear-gradient(135deg, oklch(0.22 0.04 60 / .4), var(--surface));
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  margin-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+}
+.delivery-eta__label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--fg-mute);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.delivery-eta__val {
+  font-family: 'Instrument Serif', serif;
+  font-size: 32px;
+  line-height: 1;
+  margin-top: 4px;
+}
+.delivery-eta__val .italic { color: var(--amber); }
+.delivery-eta__addr {
+  text-align: right;
+  font-size: 13px;
+  color: var(--fg-dim);
+}
+
+.success-cta {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 34px;
+  flex-wrap: wrap;
+}
+.success-cta .btn {
+  padding: 15px 26px;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all .2s;
+}
+.success-cta .btn--primary { background: var(--amber); color: oklch(0.15 0 0); }
+.success-cta .btn--primary:hover { background: var(--amber-2); }
+.success-cta .btn--ghost   { border: 1px solid var(--line); }
+.success-cta .btn--ghost:hover { border-color: var(--fg); }
+
+.next-grid {
+  margin-top: 50px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  text-align: left;
+}
+.next-item {
+  padding: 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+}
+.next-item__n {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  color: var(--amber);
+}
+.next-item__t { font-size: 13px; font-weight: 500; margin-top: 6px; }
+.next-item__d { font-size: 11px; color: var(--fg-mute); margin-top: 4px; line-height: 1.4; }
+
+@media (max-width: 700px) {
+  .next-grid { grid-template-columns: 1fr; }
+  .delivery-eta { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .delivery-eta__addr { text-align: left; }
+}

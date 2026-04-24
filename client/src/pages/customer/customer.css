@@ -1,0 +1,308 @@
+/* ===========================================================
+   CUSTOMER — primitivos das paginas filhas
+   Compartilha tudo com Profile.css; aqui so adicoes pontuais.
+   =========================================================== */
+
+/* Sidebar active indicator coerente com admin */
+.profile-sidebar .menu a {
+  position: relative;
+  overflow: hidden;
+}
+.profile-sidebar .menu a::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 3px; height: 0;
+  border-radius: 0 2px 2px 0;
+  background: var(--amber);
+  transform: translateY(-50%);
+  transition: height var(--dur-base) var(--ease-spring);
+}
+.profile-sidebar .menu a.active::before { height: 18px; }
+.profile-sidebar .menu a.active {
+  background: linear-gradient(90deg, oklch(0.82 0.14 75 / .08), transparent);
+}
+
+/* Sidebar entra deslizando da esquerda; o body principal eh animado pelo
+   wrapper global .page-transition em App.tsx */
+.profile-sidebar { animation: fade-in-right var(--dur-page) var(--ease-out) both; }
+
+/* ===================== LISTA DE LINHAS (bookings/invoices) ===================== */
+
+.c-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.c-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 22px;
+  background: linear-gradient(160deg, var(--surface), var(--bg-2));
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  animation: fade-in-up var(--dur-base) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+.c-row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(400px 200px at 100% 0%, oklch(0.82 0.14 75 / .05), transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+.c-row:hover {
+  border-color: var(--line);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -16px oklch(0 0 0 / .5);
+}
+.c-row:hover::before { opacity: 1; }
+.c-row > * { position: relative; z-index: 1; }
+
+.c-row__title {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: .005em;
+}
+.c-row__sub {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--fg-mute);
+  margin-top: 4px;
+  letter-spacing: .04em;
+}
+.c-row__amt {
+  font-family: 'Instrument Serif', serif;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -.01em;
+  text-align: right;
+  line-height: 1;
+}
+.c-row__per {
+  font-size: 11px;
+  color: var(--fg-mute);
+  margin-left: 4px;
+}
+
+/* ===================== TAGS ===================== */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border: 1px solid var(--line-soft);
+  background: oklch(1 0 0 / .02);
+}
+.tag::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+.tag--active    { color: var(--signal); border-color: oklch(0.74 0.13 155 / .35); }
+.tag--scheduled { color: var(--amber);  border-color: oklch(0.82 0.14 75 / .35); }
+.tag--finished  { color: var(--fg-mute); }
+.tag--cancelled { color: var(--danger); border-color: oklch(0.68 0.18 25 / .35); }
+.tag--paid      { color: var(--signal); border-color: oklch(0.74 0.13 155 / .35); }
+.tag--open      { color: var(--amber);  border-color: oklch(0.82 0.14 75 / .35); }
+.tag--overdue   { color: var(--danger); border-color: oklch(0.68 0.18 25 / .35); }
+
+/* ===================== EMPTY ===================== */
+
+.c-empty {
+  padding: 80px 24px;
+  text-align: center;
+  color: var(--fg-mute);
+  font-size: 14px;
+  line-height: 1.7;
+  animation: fade-in var(--dur-slow) var(--ease-out) both;
+  background: var(--surface);
+  border: 1px dashed var(--line-soft);
+  border-radius: 18px;
+}
+.c-empty::before {
+  content: '◌';
+  display: block;
+  font-family: 'Instrument Serif', serif;
+  font-size: 48px;
+  color: var(--fg-mute);
+  opacity: .5;
+  margin-bottom: 14px;
+}
+.c-empty a { color: var(--amber); }
+.c-empty a:hover { text-decoration: underline; }
+
+/* ===================== FORMULARIO ===================== */
+
+.c-form {
+  display: grid;
+  gap: 16px;
+  max-width: 580px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  animation: fade-in-up var(--dur-base) var(--ease-out) both;
+}
+.c-form__row {
+  display: grid;
+  gap: 6px;
+}
+.c-form__row label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+}
+.c-form__row input,
+.c-form__row select,
+.c-form__row textarea {
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  color: var(--fg);
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow   var(--dur-base) var(--ease-out),
+    background   var(--dur-fast) var(--ease-out);
+}
+.c-form__row input:focus,
+.c-form__row select:focus,
+.c-form__row textarea:focus {
+  border-color: var(--amber);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 3px oklch(0.82 0.14 75 / .12);
+}
+.c-form__row input[readonly] { color: var(--fg-mute); cursor: default; }
+.c-form__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.c-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.c-form__msg {
+  font-size: 12.5px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-family: 'Geist Mono', monospace;
+  letter-spacing: .02em;
+  animation: slide-in-down var(--dur-base) var(--ease-out) both;
+}
+.c-form__msg--ok  {
+  background: oklch(0.74 0.13 155 / .12);
+  color: var(--signal);
+  border: 1px solid oklch(0.74 0.13 155 / .25);
+}
+.c-form__msg--err {
+  background: oklch(0.68 0.18 25 / .12);
+  color: var(--danger);
+  border: 1px solid oklch(0.68 0.18 25 / .25);
+}
+
+/* ===================== BOTOES CUSTOMER ===================== */
+
+.c-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  color: var(--fg);
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.c-btn:hover {
+  background: var(--surface);
+  border-color: var(--line);
+  transform: translateY(-1px);
+}
+.c-btn:active { transform: scale(0.98); }
+.c-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.c-btn--primary {
+  background: linear-gradient(135deg, var(--amber), var(--amber-2));
+  color: #1a1410;
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow: 0 4px 14px oklch(0.82 0.14 75 / .25);
+}
+.c-btn--primary:hover {
+  background: linear-gradient(135deg, var(--amber-2), var(--amber));
+  box-shadow: 0 6px 20px oklch(0.82 0.14 75 / .4);
+}
+
+/* ===================== FAVORITES GRID ===================== */
+
+.fav-grid-full {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.fav-grid-full > * {
+  animation: scale-in var(--dur-base) var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* Lift do card de favorito quando esta no grid completo */
+.fav-grid-full .fav { transition: all var(--dur-base) var(--ease-out); }
+.fav-grid-full .fav:hover {
+  border-color: var(--amber);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px -16px oklch(0 0 0 / .6);
+}
+
+/* Stat cards usados na pagina de Invoices */
+.c-stat {
+  background: linear-gradient(160deg, var(--surface), var(--bg-2));
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 18px 20px;
+  transition: border-color var(--dur-base) var(--ease-out);
+  animation: fade-in-up var(--dur-base) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+.c-stat:hover { border-color: var(--line); }
+.c-stat__k {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+}
+.c-stat__v {
+  font-family: 'Instrument Serif', serif;
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -.015em;
+  margin-top: 8px;
+  line-height: 1;
+}

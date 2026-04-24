@@ -1,0 +1,29 @@
+{
+  "name": "carshare",
+  "version": "1.0.0",
+  "description": "CarShare — assinatura mensal de carros (full-stack)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently -n server,client -c yellow,cyan \"npm:server:dev\" \"npm:dev:client\"",
+    "server:dev": "node --watch server.js",
+    "dev:client": "npm --prefix client run dev",
+    "build:client": "npm --prefix client run build",
+    "install:all": "npm install && npm --prefix client install"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
