@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { AdminLayout } from './AdminLayout';
+import { Pager } from '../../components/Pager';
+import { EmptyState } from '../../components/EmptyState';
+import { FiltersBar } from '../../components/FiltersBar';
 import { api, fmt, LABELS } from '../../lib/api';
 import type { Car } from '../../lib/types';
 
@@ -29,23 +32,19 @@ export function AdminCars() {
   return (
     <AdminLayout subtitle="Gestão · frota" title="Carros">
       <div className="panel">
-        <div className="filters">
+        <FiltersBar count={`${total} ${total === 1 ? 'carro' : 'carros'} no total`}>
           <input
             type="search"
             placeholder="Buscar marca ou modelo…"
             value={q}
             onChange={e => { setOffset(0); setQ(e.target.value); }}
           />
-          <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 12, color: 'var(--fg-mute)', alignSelf: 'center' }}>
-            {total} {total === 1 ? 'carro' : 'carros'} no total
-          </span>
-        </div>
+        </FiltersBar>
 
         {loading && !items.length ? (
-          <div className="empty">Carregando…</div>
+          <EmptyState>Carregando…</EmptyState>
         ) : items.length === 0 ? (
-          <div className="empty">Nenhum carro encontrado.</div>
+          <EmptyState>Nenhum carro encontrado.</EmptyState>
         ) : (
           <table className="tbl">
             <thead>
@@ -85,23 +84,7 @@ export function AdminCars() {
           </table>
         )}
 
-        <div className="pager">
-          <span>
-            {Math.min(offset + 1, total)}–{Math.min(offset + PAGE, total)} de {total}
-          </span>
-          <div className="pager__btns">
-            <button
-              className="btn btn--xs"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - PAGE))}
-            >← anterior</button>
-            <button
-              className="btn btn--xs"
-              disabled={offset + PAGE >= total}
-              onClick={() => setOffset(offset + PAGE)}
-            >próxima →</button>
-          </div>
-        </div>
+        <Pager offset={offset} pageSize={PAGE} total={total} onChange={setOffset} />
       </div>
 
       <div className="panel" style={{ marginTop: 16 }}>

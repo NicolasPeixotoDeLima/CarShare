@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AdminLayout } from './AdminLayout';
+import { StatusTag } from '../../components/StatusTag';
 import { api, fmt } from '../../lib/api';
 import type { AdminStats } from '../../lib/types';
 
@@ -80,7 +81,7 @@ export function AdminDashboard() {
                           <div className="mono">{b.user_email}</div>
                         </td>
                         <td>{b.brand} {b.model}</td>
-                        <td><span className={`tag tag--${b.status}`}>{b.status}</span></td>
+                        <td><StatusTag variant={b.status} /></td>
                         <td className="right num">{fmt.brl(b.monthly_price)}</td>
                       </tr>
                     ))}

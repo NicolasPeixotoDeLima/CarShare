@@ -17,6 +17,11 @@
   font-weight: 500;
   font-size: 17px;
 }
+.profile-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 /* logo agora vem do componente <Logo /> */
 .profile-nav__user {
   display: flex;

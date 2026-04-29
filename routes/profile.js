@@ -83,7 +83,9 @@ router.get('/bookings', async (req, res, next) => {
     const items = await db.all(
       `SELECT b.id, b.code, b.status, b.term_months, b.km_limit, b.start_date, b.end_date,
               b.monthly_price, b.total_price, b.payment_method, b.delivery_when, b.created_at,
-              c.id AS car_id, c.brand, c.model, c.year, c.slug, c.category
+              b.delivered_at, b.delivery_confirmed_at,
+              b.cancelled_at, b.cancellation_fee, b.cancellation_reason,
+              c.id AS car_id, c.brand, c.model, c.year, c.slug, c.category, c.owner_id
          FROM bookings b JOIN cars c ON c.id = b.car_id
         WHERE b.user_id = $1
         ORDER BY b.created_at DESC`,

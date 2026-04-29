@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { AdminLayout } from './AdminLayout';
+import { Pager } from '../../components/Pager';
+import { EmptyState } from '../../components/EmptyState';
+import { FiltersBar } from '../../components/FiltersBar';
+import { StatusTag } from '../../components/StatusTag';
 import { api, fmt } from '../../lib/api';
 import type { AdminInvoiceRow } from '../../lib/types';
 
@@ -47,7 +51,7 @@ export function AdminInvoices() {
   return (
     <AdminLayout subtitle="Gestão · cobrança" title="Faturas">
       <div className="panel">
-        <div className="filters">
+        <FiltersBar count={`${total} ${total === 1 ? 'fatura' : 'faturas'}`}>
           {(['all', 'open', 'overdue', 'paid'] as Filter[]).map(f => (
             <button
               key={f}
@@ -57,16 +61,12 @@ export function AdminInvoices() {
               {f === 'all' ? 'Todas' : f === 'open' ? 'Em aberto' : f === 'overdue' ? 'Vencidas' : 'Pagas'}
             </button>
           ))}
-          <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 12, color: 'var(--fg-mute)', alignSelf: 'center' }}>
-            {total} {total === 1 ? 'fatura' : 'faturas'}
-          </span>
-        </div>
+        </FiltersBar>
 
         {loading && !items.length ? (
-          <div className="empty">Carregando…</div>
+          <EmptyState>Carregando…</EmptyState>
         ) : items.length === 0 ? (
-          <div className="empty">Nenhuma fatura encontrada.</div>
+          <EmptyState>Nenhuma fatura encontrada.</EmptyState>
         ) : (
           <table className="tbl">
             <thead>
@@ -97,7 +97,7 @@ export function AdminInvoices() {
                     <td>{inv.brand} {inv.model}</td>
                     <td className="mono" style={{ fontSize: 12 }}>{fmt.dateLong(inv.due_date)}</td>
                     <td className="right num">{fmt.brl(inv.amount)}</td>
-                    <td><span className={`tag tag--${tag}`}>{tagLabel}</span></td>
+                    <td><StatusTag variant={tag}>{tagLabel}</StatusTag></td>
                     <td className="right">
                       <button className="btn btn--xs" onClick={() => toggle(inv)}>
                         {inv.paid ? 'Marcar não paga' : 'Marcar paga'}
@@ -110,23 +110,7 @@ export function AdminInvoices() {
           </table>
         )}
 
-        <div className="pager">
-          <span>
-            {Math.min(offset + 1, total)}–{Math.min(offset + PAGE, total)} de {total}
-          </span>
-          <div className="pager__btns">
-            <button
-              className="btn btn--xs"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - PAGE))}
-            >← anterior</button>
-            <button
-              className="btn btn--xs"
-              disabled={offset + PAGE >= total}
-              onClick={() => setOffset(offset + PAGE)}
-            >próxima →</button>
-          </div>
-        </div>
+        <Pager offset={offset} pageSize={PAGE} total={total} onChange={setOffset} />
       </div>
     </AdminLayout>
   );

@@ -74,7 +74,21 @@ router.get('/:idOrSlug', async (req, res, next) => {
       ? await db.one('SELECT * FROM cars WHERE id = $1', [parseInt(idOrSlug, 10)])
       : await db.one('SELECT * FROM cars WHERE slug = $1', [idOrSlug]);
     if (!row) return res.status(404).json({ error: 'not_found' });
-    res.json(row);
+
+    // Enriquece com rating real do proprietario (avg + total) calculado dinamicamente
+    // a partir de profile_reviews. Pra carros sem owner (frota da plataforma)
+    // fica { avg: 0, total: 0 }.
+    let owner_rating = { avg: 0, total: 0 };
+    if (row.owner_id) {
+      const r = await db.one(
+        `SELECT COUNT(*)::int AS total,
+                COALESCE(AVG(rating), 0)::float AS avg
+           FROM profile_reviews WHERE target_id = $1`,
+        [row.owner_id],
+      );
+      owner_rating = { avg: r.avg, total: r.total };
+    }
+    res.json({ ...row, owner_rating });
   } catch (err) { next(err); }
 });
 
@@ -100,12 +114,60 @@ function validatePayload(body) {
   if (!ALLOWED_TRANSMISSIONS.includes(body.transmission))return 'invalid_transmission';
   if (!ALLOWED_HUBS.includes(body.hub))                  return 'invalid_hub';
   if (!/^[a-z0-9-]{3,}$/.test(body.slug))                return 'invalid_slug';
+
+  // km_options: aceita undefined (usa default do schema) ou array nao-vazio.
+  if (body.km_options !== undefined) {
+    const err = validateKmOptions(body.km_options);
+    if (err) return err;
+  }
   return null;
 }
 
-// Proprietarios and admins can publish cars. The proprietario can only list
-// cars under their own ownership; admin can also assign owner_id explicitly.
-router.post('/', requireRole('proprietario', 'admin'), async (req, res, next) => {
+/** Valida lista de franquias mensais. Retorna codigo de erro ou null. */
+function validateKmOptions(opts) {
+  if (!Array.isArray(opts) || opts.length === 0) return 'km_options_empty';
+  const seen = new Set();
+  for (const o of opts) {
+    if (!o || typeof o !== 'object') return 'invalid_km_option';
+    const v = String(o.value || '').trim();
+    if (!v) return 'invalid_km_value';
+    if (v !== 'livre' && !/^\d{2,6}$/.test(v)) return 'invalid_km_value';
+    if (seen.has(v)) return 'duplicate_km_value';
+    seen.add(v);
+    const s = Number(o.surcharge);
+    if (!Number.isFinite(s) || s < 0) return 'invalid_km_surcharge';
+  }
+  return null;
+}
+
+/** Normaliza km_options para gravacao: garante shape consistente. */
+function normalizeKmOptions(opts) {
+  return opts.map(o => ({
+    value: String(o.value).trim(),
+    surcharge: Math.round(Number(o.surcharge)),
+  }));
+}
+
+const TERMS = ['1', '3', '6', '12'];
+
+/** Valida term_prices: objeto com chaves '1','3','6','12' e valores numericos > 0. */
+function validateTermPrices(tp) {
+  if (!tp || typeof tp !== 'object' || Array.isArray(tp)) return 'invalid_term_prices';
+  for (const t of TERMS) {
+    if (tp[t] === undefined) return 'missing_term_price';
+    const n = Number(tp[t]);
+    if (!Number.isFinite(n) || n <= 0) return 'invalid_term_price';
+  }
+  return null;
+}
+
+function normalizeTermPrices(tp) {
+  return TERMS.reduce((acc, t) => ({ ...acc, [t]: Math.round(Number(tp[t])) }), {});
+}
+
+// Apenas proprietarios anunciam carros. Admin nao opera como locador
+// — pode editar/remover (moderacao) via PUT/DELETE abaixo.
+router.post('/', requireRole('proprietario'), async (req, res, next) => {
   try {
     const err = validatePayload(req.body || {});
     if (err) return res.status(400).json({ error: err });
@@ -113,14 +175,38 @@ router.post('/', requireRole('proprietario', 'admin'), async (req, res, next) =>
     const dup = await db.one('SELECT id FROM cars WHERE slug = $1', [req.body.slug]);
     if (dup) return res.status(409).json({ error: 'slug_taken' });
 
-    const ownerId = req.user.role === 'admin' && req.body.owner_id
-      ? parseInt(req.body.owner_id, 10)
-      : req.user.id;
+    const ownerId = req.user.id;
+    const km = req.body.km_options
+      ? normalizeKmOptions(req.body.km_options)
+      : null;
+
+    // term_prices: valida se enviado, senao deriva do price_month com descontos historicos
+    let termPrices = null;
+    if (req.body.term_prices !== undefined) {
+      const tpErr = validateTermPrices(req.body.term_prices);
+      if (tpErr) return res.status(400).json({ error: tpErr });
+      termPrices = normalizeTermPrices(req.body.term_prices);
+    } else {
+      const base = Number(req.body.price_month);
+      termPrices = {
+        '1':  base,
+        '3':  Math.round(base * 0.95),
+        '6':  Math.round(base * 0.92),
+        '12': Math.round(base * 0.88),
+      };
+    }
 
     const row = await db.one(
       `INSERT INTO cars (slug, owner_id, brand, model, year, category, fuel, transmission,
-        seats, range_km, power_hp, delivery_hours, hub, price_month, badge, description, stock)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+        seats, range_km, power_hp, delivery_hours, hub, price_month, badge, description, stock,
+        km_options, term_prices)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+         COALESCE($18::jsonb, '[
+           {"value":"1500","surcharge":0},
+           {"value":"2500","surcharge":180},
+           {"value":"livre","surcharge":420}
+         ]'::jsonb),
+         $19::jsonb)
        RETURNING *`,
       [
         req.body.slug, ownerId, req.body.brand, req.body.model, req.body.year,
@@ -128,6 +214,8 @@ router.post('/', requireRole('proprietario', 'admin'), async (req, res, next) =>
         req.body.seats, req.body.range_km || null, req.body.power_hp || null,
         req.body.delivery_hours || 48, req.body.hub, req.body.price_month,
         req.body.badge || null, req.body.description || null, req.body.stock ?? 1,
+        km ? JSON.stringify(km) : null,
+        JSON.stringify(termPrices),
       ],
     );
     res.status(201).json(row);
@@ -158,6 +246,21 @@ router.put('/:id', requireRole('proprietario', 'admin'), async (req, res, next) 
         sets.push(`${f} = $${values.length}`);
       }
     }
+
+    if (req.body.km_options !== undefined) {
+      const errCode = validateKmOptions(req.body.km_options);
+      if (errCode) return res.status(400).json({ error: errCode });
+      values.push(JSON.stringify(normalizeKmOptions(req.body.km_options)));
+      sets.push(`km_options = $${values.length}::jsonb`);
+    }
+
+    if (req.body.term_prices !== undefined) {
+      const errCode = validateTermPrices(req.body.term_prices);
+      if (errCode) return res.status(400).json({ error: errCode });
+      values.push(JSON.stringify(normalizeTermPrices(req.body.term_prices)));
+      sets.push(`term_prices = $${values.length}::jsonb`);
+    }
+
     if (!sets.length) return res.json(car);
 
     values.push(id);

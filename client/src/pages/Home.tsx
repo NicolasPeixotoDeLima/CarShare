@@ -1,32 +1,65 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Nav } from '../components/Nav';
 import { CarSilhouette } from '../components/CarSilhouette';
 import { LiveMap } from '../components/LiveMap';
 import { useAuth } from '../lib/useAuth';
-import type { Category } from '../lib/types';
+import { api, fmt, LABELS } from '../lib/api';
+import type { Car, Category } from '../lib/types';
 import './Home.css';
 
-const CATEGORIES: Array<{ key: Category; num: string; name: string; priceFrom: string }> = [
-  { key: 'urbano',   num: '01', name: 'Urbano',   priceFrom: 'R$ 1.890' },
-  { key: 'seda',     num: '02', name: 'Sedã',     priceFrom: 'R$ 2.490' },
-  { key: 'suv',      num: '03', name: 'SUV',      priceFrom: 'R$ 3.190' },
-  { key: 'pickup',   num: '04', name: 'Pickup',   priceFrom: 'R$ 3.690' },
-  { key: 'eletrico', num: '05', name: 'Elétrico', priceFrom: 'R$ 3.990' },
-  { key: 'luxo',     num: '06', name: 'Luxo',     priceFrom: 'R$ 5.890' },
-];
+const CATEGORY_KEYS: Category[] = ['urbano', 'seda', 'suv', 'pickup', 'eletrico', 'luxo'];
 
 const STEPS = [
-  { num: '01', title: 'Escolha seu carro.',  desc: 'Filtre por categoria, autonomia, câmbio e hub de entrega. Mais de 2.800 opções.' },
-  { num: '02', title: 'Assine em minutos.',  desc: 'CNH válida, aprovação em 3 minutos. Sem fiador, sem entrada, sem IPVA.' },
-  { num: '03', title: 'Dirija sem amarras.', desc: 'Entrega em 48h com tanque cheio. Seguro, manutenção e assistência 24h inclusos.' },
+  { num: '01', title: 'Escolha seu carro.',  desc: 'Filtre por categoria, autonomia, câmbio e hub de entrega.' },
+  { num: '02', title: 'Assine em minutos.',  desc: 'CNH válida, aprovação rápida. Sem fiador, sem entrada, sem IPVA.' },
+  { num: '03', title: 'Dirija sem amarras.', desc: 'Entrega em horas com tanque cheio. Seguro, manutenção e assistência inclusos.' },
 ];
+
+interface CategoryStat {
+  key: Category;
+  num: string;
+  name: string;
+  priceFrom: number | null;
+  count: number;
+}
 
 export function Home() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [mapExpanded, setMapExpanded] = useState(false);
+
+  const [allCars, setAllCars] = useState<Car[] | null>(null);
+  const [totalCars, setTotalCars] = useState<number | null>(null);
+
+  // Carrega frota real pra alimentar metricas e categorias
+  useEffect(() => {
+    let cancel = false;
+    api.cars.list({ limit: 200 })
+      .then(r => { if (!cancel) { setAllCars(r.items); setTotalCars(r.total); } })
+      .catch(() => { if (!cancel) { setAllCars([]); setTotalCars(0); } });
+    return () => { cancel = true; };
+  }, []);
+
+  const categoryStats = useMemo<CategoryStat[]>(() => {
+    return CATEGORY_KEYS.map((k, i) => {
+      const matches = (allCars ?? []).filter(c => c.category === k);
+      const min = matches.length > 0 ? Math.min(...matches.map(c => c.price_month)) : null;
+      return {
+        key: k,
+        num: String(i + 1).padStart(2, '0'),
+        name: LABELS.category[k],
+        priceFrom: min,
+        count: matches.length,
+      };
+    });
+  }, [allCars]);
+
+  const fastestDelivery = useMemo(() => {
+    if (!allCars || allCars.length === 0) return null;
+    return Math.min(...allCars.map(c => c.delivery_hours || 48));
+  }, [allCars]);
 
   function goFleet(category?: Category) {
     navigate('/fleet' + (category ? `?category=${category}` : ''));
@@ -61,31 +94,47 @@ export function Home() {
             pelo <span className="stroke">tempo que quiser.</span>
           </h1>
           <p className="hero__sub">
-            Assinatura mensal flexível, sem financiamento e sem burocracia. Troque de modelo quando quiser,
-            com seguro, manutenção e assistência 24h inclusos.
+            Assinatura mensal flexível, sem financiamento e sem burocracia. Troque de modelo
+            quando quiser, com seguro, manutenção e assistência 24h inclusos.
           </p>
+
+          <div className="hero__cta">
+            <button className="btn btn--primary" onClick={() => goFleet()}>
+              Explorar frota
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 12h14M13 5l7 7-7 7" />
+              </svg>
+            </button>
+            <button className="btn btn--ghost" onClick={() => navigate('/help')}>Como funciona</button>
+          </div>
+
           <div className="hero__metrics">
             <div className="hero__metric">
-              <div className="hero__metric-num serif">2.847<span className="hero__metric-unit">un</span></div>
+              <div className="hero__metric-num serif">
+                {totalCars != null ? fmt.int(totalCars) : '—'}
+              </div>
               <div className="hero__metric-lbl mono">carros disponíveis</div>
             </div>
             <div className="hero__metric">
-              <div className="hero__metric-num serif">48<span className="hero__metric-unit">h</span></div>
-              <div className="hero__metric-lbl mono">entrega na porta</div>
+              <div className="hero__metric-num serif">
+                {fastestDelivery != null ? fastestDelivery : '—'}
+                <span className="hero__metric-unit">h</span>
+              </div>
+              <div className="hero__metric-lbl mono">entrega rápida</div>
             </div>
             <div className="hero__metric">
-              <div className="hero__metric-num serif">12<span className="hero__metric-unit">×</span></div>
-              <div className="hero__metric-lbl mono">menos que financiar</div>
+              <div className="hero__metric-num serif">
+                {categoryStats.filter(c => c.count > 0).length}
+                <span className="hero__metric-unit">cat</span>
+              </div>
+              <div className="hero__metric-lbl mono">categorias ativas</div>
             </div>
           </div>
         </div>
 
         <div className="hero__map">
-          <div className="hero__map-chip hero__map-chip--a hero__map-chip--live">
-            <span className="dot" />Ao vivo · <strong>sua região</strong>
-          </div>
-          <div className="hero__map-chip hero__map-chip--b">
-            <span>◎</span><strong>342</strong> próximos
+          <div className="hero__map-chip hero__map-chip--live">
+            <span className="dot" />Mapa ao vivo · <strong>sua região</strong>
           </div>
 
           <LiveMap onExpand={() => setMapExpanded(true)} />
@@ -94,7 +143,6 @@ export function Home() {
             <div><span className="sw" style={{ background: 'var(--amber)', boxShadow: '0 0 6px var(--amber)' }} />Você</div>
             <div><span className="sw" style={{ background: 'var(--amber)' }} />Carros ativos</div>
             <div><span className="sw" style={{ background: 'var(--signal)' }} />A caminho</div>
-            <div><span className="sw" style={{ background: 'var(--fg-dim)' }} />Disponíveis</div>
           </div>
         </div>
 
@@ -104,66 +152,42 @@ export function Home() {
         )}
       </section>
 
-      <div className="search-panel">
-        <button className="search-panel__field" onClick={() => goFleet()}>
-          <span className="search-panel__label mono">Retirada</span>
-          <span className="search-panel__value">São Paulo, Vila Olímpia <span style={{ color: 'var(--fg-mute)' }}>▾</span></span>
-          <span className="search-panel__hint">Rua Fiandeiras, 930</span>
-        </button>
-        <button className="search-panel__field" onClick={() => goFleet()}>
-          <span className="search-panel__label mono">Devolução</span>
-          <span className="search-panel__value">Mesmo local <span style={{ color: 'var(--fg-mute)' }}>▾</span></span>
-          <span className="search-panel__hint">Troque por qualquer hub</span>
-        </button>
-        <button className="search-panel__field" onClick={() => goFleet()}>
-          <span className="search-panel__label mono">Início</span>
-          <span className="search-panel__value">Hoje · agora</span>
-          <span className="search-panel__hint">Entrega em 48h</span>
-        </button>
-        <button className="search-panel__field" onClick={() => goFleet()}>
-          <span className="search-panel__label mono">Término</span>
-          <span className="search-panel__value">+ 1 mês</span>
-          <span className="search-panel__hint">renovável</span>
-        </button>
-        <button className="search-panel__field" onClick={() => goFleet()}>
-          <span className="search-panel__label mono">Categoria</span>
-          <span className="search-panel__value">Todas <span style={{ color: 'var(--fg-mute)' }}>▾</span></span>
-          <span className="search-panel__hint">6 categorias · 2.847 opções</span>
-        </button>
-        <button className="search-panel__submit" onClick={() => goFleet()}>
-          Buscar frota
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 12h14M13 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-
-      <section className="section">
+      <section className="section section--cats">
         <div className="section__head">
           <div>
             <div className="section__label mono">Categorias — 01</div>
             <h2 className="section__title">Escolha sua <span className="italic">estrada.</span></h2>
           </div>
           <div className="section__meta">
-            Seis linhas, do urbano compacto ao desempenho. Todas com seguro, manutenção e km livre.
+            Seis linhas, do urbano compacto ao desempenho. Todas com seguro, manutenção e assistência.
           </div>
         </div>
         <div className="cat-rail">
-          {CATEGORIES.map(c => (
-            <button key={c.key} className="cat-card" onClick={() => goFleet(c.key)}>
-              <div className="cat-card__num mono">{c.num}</div>
-              <div className="cat-card__name">{c.name}</div>
-              <div className="cat-card__from mono">
-                a partir de <span className="v">{c.priceFrom}</span>/mês
-              </div>
-              <CarSilhouette category={c.key} className="cat-card__silhouette" />
-              <div className="cat-card__arrow">→</div>
-            </button>
-          ))}
+          {categoryStats.map(c => {
+            const empty = c.count === 0;
+            return (
+              <button
+                key={c.key}
+                className={`cat-card ${empty ? 'is-empty' : ''}`}
+                onClick={() => goFleet(c.key)}
+                disabled={empty}
+              >
+                <div className="cat-card__num mono">{c.num}</div>
+                <div className="cat-card__name">{c.name}</div>
+                <div className="cat-card__from mono">
+                  {c.priceFrom != null
+                    ? <>a partir de <span className="v">{fmt.brl(c.priceFrom)}</span>/mês</>
+                    : <span style={{ color: 'var(--fg-mute)' }}>sem unidades</span>}
+                </div>
+                <CarSilhouette category={c.key} className="cat-card__silhouette" />
+                <div className="cat-card__arrow">→</div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
-      <section className="section" id="como-funciona" style={{ paddingTop: 0 }}>
+      <section className="section" id="como-funciona">
         <div className="section__head">
           <div>
             <div className="section__label mono">Como funciona — 02</div>
@@ -186,52 +210,56 @@ export function Home() {
         </div>
       </section>
 
-      <section className="section" style={{ paddingTop: 0 }}>
+      <section className="section">
         <div className="offer">
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <div className="offer__tag">⚡ Oferta por tempo limitado</div>
+          <div className="offer__inner">
+            <div className="offer__tag">⚡ Comece sem compromisso</div>
             <h2 className="offer__title">
-              Primeiro mês <span className="italic">pela metade.</span>
+              Cancele quando <span className="italic">quiser.</span>
             </h2>
             <p className="offer__desc">
-              Assine qualquer carro até domingo e pague 50% no primeiro mês. Sem taxa de adesão. Cancele
-              quando quiser, sem multa.
+              Sem fidelidade longa, sem multa de saída antecipada nos primeiros 30 dias. Se mudar
+              de ideia, devolva o carro e a gente cuida do resto.
             </p>
             <div className="offer__cta">
-              <button className="btn btn--primary" onClick={() => goFleet()}>Ativar oferta →</button>
-              <button className="btn btn--ghost" onClick={() => navigate('/help')}>Ver termos</button>
+              <button className="btn btn--primary" onClick={() => goFleet()}>Ver carros disponíveis →</button>
+              <button className="btn btn--ghost" onClick={() => navigate('/help')}>Ler termos</button>
             </div>
           </div>
         </div>
       </section>
 
       <footer className="footer">
-        <div className="footer__logo serif">
-          Car<span className="italic">Share</span>
-        </div>
-        <div className="footer__col">
-          <h4>Produto</h4>
-          <ul>
-            <li><Link to="/fleet">Frota completa</Link></li>
-            <li><Link to="/login?tab=signup">Criar conta</Link></li>
-            <li><Link to="/help">Como funciona</Link></li>
-          </ul>
-        </div>
-        <div className="footer__col">
-          <h4>Conta</h4>
-          <ul>
-            <li><Link to="/profile">Meu perfil</Link></li>
-            <li><Link to="/bookings">Minhas reservas</Link></li>
-            <li><Link to="/invoices">Faturas</Link></li>
-            <li><Link to="/favorites">Favoritos</Link></li>
-          </ul>
-        </div>
-        <div className="footer__col">
-          <h4>Suporte</h4>
-          <ul>
-            <li><Link to="/help">Central de ajuda</Link></li>
-            <li><a href="mailto:contato@carshare.exemplo">Fale conosco</a></li>
-          </ul>
+        <div className="footer__top">
+          <div className="footer__logo serif">
+            Car<span className="italic">Share</span>
+          </div>
+          <div className="footer__cols">
+            <div className="footer__col">
+              <h4>Produto</h4>
+              <ul>
+                <li><Link to="/fleet">Frota completa</Link></li>
+                <li><Link to="/login?tab=signup">Criar conta</Link></li>
+                <li><Link to="/help">Como funciona</Link></li>
+              </ul>
+            </div>
+            <div className="footer__col">
+              <h4>Conta</h4>
+              <ul>
+                <li><Link to="/profile">Meu perfil</Link></li>
+                <li><Link to="/bookings">Minhas reservas</Link></li>
+                <li><Link to="/invoices">Faturas</Link></li>
+                <li><Link to="/favorites">Favoritos</Link></li>
+              </ul>
+            </div>
+            <div className="footer__col">
+              <h4>Suporte</h4>
+              <ul>
+                <li><Link to="/help">Central de ajuda</Link></li>
+                <li><a href="mailto:contato@carshare.exemplo">Fale conosco</a></li>
+              </ul>
+            </div>
+          </div>
         </div>
         <div className="footer__meta">
           <div>© {new Date().getFullYear()} CarShare · Todos os direitos reservados.</div>

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { CustomerLayout } from './CustomerLayout';
+import { DatePicker } from '../../components/DatePicker';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/useAuth';
 
@@ -84,7 +85,12 @@ export function Account() {
             </div>
             <div className="c-form__row">
               <label>Data de nascimento</label>
-              <input type="date" value={form.birthdate} onChange={e => set('birthdate', e.target.value)} />
+              <DatePicker
+                value={form.birthdate}
+                onChange={v => set('birthdate', v)}
+                placeholder="dd/mm/aaaa"
+                max={new Date().toISOString().slice(0, 10)}
+              />
             </div>
           </div>
           <div className="c-form__pair">

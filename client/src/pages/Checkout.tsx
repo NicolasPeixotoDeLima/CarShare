@@ -4,6 +4,8 @@ import { api, ApiError, LABELS, fmt } from '../lib/api';
 import { draft as draftStore } from '../lib/draft';
 import { useAuth } from '../lib/useAuth';
 import { Logo } from '../components/Logo';
+import { BackButton } from '../components/BackButton';
+import { DatePicker } from '../components/DatePicker';
 import type { BookingDraft, DeliveryWhen, PaymentMethod, User } from '../lib/types';
 import './Checkout.css';
 
@@ -131,6 +133,8 @@ export function Checkout() {
         <span className="checkout-nav__secure">🔒 Conexão segura · SSL 256-bit</span>
       </nav>
 
+      <BackButton className="back-btn--floating" fallback="/fleet" />
+
       <StepsBar current={step} />
 
       <div className="checkout-shell">
@@ -151,7 +155,12 @@ export function Checkout() {
                 </div>
                 <div>
                   <label>Data de nascimento</label>
-                  <input placeholder="dd/mm/aaaa" value={personal.birth} onChange={e => setPersonal(p => ({ ...p, birth: e.target.value }))} />
+                  <DatePicker
+                    value={personal.birth}
+                    onChange={v => setPersonal(p => ({ ...p, birth: v }))}
+                    placeholder="dd/mm/aaaa"
+                    max={new Date().toISOString().slice(0, 10)}
+                  />
                 </div>
               </div>
               <div className="field field--row">
@@ -391,7 +400,7 @@ function Summary({ draft }: { draft: BookingDraft }) {
         </div>
         <div className="summary__row">
           <span>Franquia</span>
-          <span className="v">{LABELS.km[draft.km_limit]}</span>
+          <span className="v">{fmt.km(draft.km_limit)}</span>
         </div>
         {draft.extras.map(e => (
           <div key={e} className="summary__row">

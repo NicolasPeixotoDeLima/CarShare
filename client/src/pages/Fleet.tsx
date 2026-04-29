@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Nav } from '../components/Nav';
+import { BackButton } from '../components/BackButton';
 import { CarSilhouette } from '../components/CarSilhouette';
+import { Select } from '../components/Select';
 import { useAuth } from '../lib/useAuth';
 import { api, fmt, LABELS } from '../lib/api';
 import type { Car, Category, Fuel, Hub, Transmission, CarsFilters } from '../lib/types';
@@ -123,6 +125,7 @@ export function Fleet() {
   return (
     <>
       <Nav user={user} onLogout={logout} activeSection="fleet" />
+      <BackButton className="back-btn--floating" />
 
       <section className="fleet-head">
         <div>
@@ -160,15 +163,17 @@ export function Fleet() {
         <div className="fleet-toolbar__right">
           <label className="fleet-sort">
             <span className="mono" style={{ color: 'var(--fg-mute)', fontSize: 10, letterSpacing: '.1em' }}>ORDENAR</span>
-            <select
+            <Select
+              size="sm"
               value={state.sort}
-              onChange={(e) => setField('sort', e.target.value as FleetState['sort'])}
-            >
-              <option value="popular">Populares</option>
-              <option value="newest">Mais novos</option>
-              <option value="price_asc">Menor preço</option>
-              <option value="price_desc">Maior preço</option>
-            </select>
+              onChange={v => setField('sort', v as FleetState['sort'])}
+              options={[
+                { value: 'popular',    label: 'Populares' },
+                { value: 'newest',     label: 'Mais novos' },
+                { value: 'price_asc',  label: 'Menor preço' },
+                { value: 'price_desc', label: 'Maior preço' },
+              ]}
+            />
           </label>
         </div>
       </div>

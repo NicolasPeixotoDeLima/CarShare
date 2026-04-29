@@ -1,9 +1,12 @@
 const express = require('express');
 const db = require('../db');
-const { authRequired } = require('../middleware/auth');
+const { authRequired, blockRoles } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(authRequired);
+// Reservar/alugar carro é exclusivo de cliente. Admin nao opera como usuario;
+// proprietario possui carros — nao deve aluga-los como cliente.
+router.use(blockRoles('admin', 'proprietario'));
 
 const EXTRAS_PRICES = {
   seguro_plus:       190,
@@ -11,8 +14,6 @@ const EXTRAS_PRICES = {
   motorista_extra:    60,
   wallbox:            90,
 };
-
-const KM_SURCHARGE = { '1500': 0, '2500': 180, 'livre': 420 };
 
 function genCode() {
   const n = Math.floor(10000 + Math.random() * 90000);
@@ -38,16 +39,29 @@ router.post('/', async (req, res, next) => {
 
     const term = parseInt(term_months, 10);
     if (![1, 3, 6, 12].includes(term)) return res.status(400).json({ error: 'invalid_term' });
-    if (!['1500', '2500', 'livre'].includes(String(km_limit))) return res.status(400).json({ error: 'invalid_km' });
+
+    // Valida km_limit contra as opcoes oferecidas pelo proprietario do carro
+    const carKmOptions = Array.isArray(car.km_options) ? car.km_options : [];
+    const chosen = carKmOptions.find(o => String(o.value) === String(km_limit));
+    if (!chosen) return res.status(400).json({ error: 'invalid_km' });
 
     const extraList = Array.isArray(extras) ? extras.filter(e => EXTRAS_PRICES[e] !== undefined) : [];
     const extrasCost = extraList.reduce((s, k) => s + EXTRAS_PRICES[k], 0);
-    const kmCost = KM_SURCHARGE[String(km_limit)] || 0;
+    const kmCost = Number(chosen.surcharge) || 0;
 
-    let monthlyPrice = car.price_month + extrasCost + kmCost;
-    if (term === 3)  monthlyPrice = Math.round(monthlyPrice * 0.95);
-    if (term === 6)  monthlyPrice = Math.round(monthlyPrice * 0.92);
-    if (term === 12) monthlyPrice = Math.round(monthlyPrice * 0.88);
+    // Preco por prazo definido pelo proprietario (term_prices). Fallback histo-
+    // rico (descontos fixos) caso o carro nao tenha o JSON setado por algum motivo.
+    const tp = car.term_prices || {};
+    const baseForTerm = Number(tp[String(term)]);
+    let monthlyPrice;
+    if (Number.isFinite(baseForTerm) && baseForTerm > 0) {
+      monthlyPrice = baseForTerm + extrasCost + kmCost;
+    } else {
+      monthlyPrice = car.price_month + extrasCost + kmCost;
+      if (term === 3)  monthlyPrice = Math.round(monthlyPrice * 0.95);
+      if (term === 6)  monthlyPrice = Math.round(monthlyPrice * 0.92);
+      if (term === 12) monthlyPrice = Math.round(monthlyPrice * 0.88);
+    }
 
     const totalPrice = monthlyPrice * term;
     const start = start_date || new Date().toISOString().slice(0, 10);
@@ -115,6 +129,63 @@ router.get('/:code', async (req, res, next) => {
       [row.id],
     );
     res.json({ booking: row, invoices });
+  } catch (err) { next(err); }
+});
+
+/** Calcula multa de quebra de contrato:
+ *  30% sobre os meses restantes (arredondado pra cima) × mensalidade. */
+function calcCancellationFee(booking) {
+  const start = new Date(booking.start_date).getTime();
+  const today = Date.now();
+  const monthMs = 1000 * 60 * 60 * 24 * 30;
+  const elapsedMonths = Math.max(0, Math.floor((today - start) / monthMs));
+  const remaining = Math.max(0, booking.term_months - elapsedMonths);
+  return Math.round(remaining * booking.monthly_price * 0.3);
+}
+
+/* PATCH /api/bookings/:code — acoes do cliente:
+   - confirm_delivery : confirma que recebeu o carro (transita scheduled→active)
+   - cancel           : quebra contrato e calcula multa */
+router.patch('/:code', async (req, res, next) => {
+  try {
+    const { action, reason } = req.body || {};
+    const row = await db.one(
+      'SELECT * FROM bookings WHERE code = $1 AND user_id = $2',
+      [req.params.code, req.user.id],
+    );
+    if (!row) return res.status(404).json({ error: 'not_found' });
+
+    if (action === 'confirm_delivery') {
+      if (!row.delivered_at) return res.status(400).json({ error: 'not_yet_delivered' });
+      if (row.delivery_confirmed_at) return res.status(400).json({ error: 'already_confirmed' });
+      const updated = await db.one(
+        `UPDATE bookings
+            SET delivery_confirmed_at = now(), status = 'active'
+          WHERE id = $1 RETURNING *`,
+        [row.id],
+      );
+      return res.json({ booking: updated });
+    }
+
+    if (action === 'cancel') {
+      if (row.status === 'cancelled' || row.status === 'finished') {
+        return res.status(400).json({ error: 'already_closed' });
+      }
+      const fee = calcCancellationFee(row);
+      const updated = await db.one(
+        `UPDATE bookings
+            SET status = 'cancelled',
+                cancelled_at = now(),
+                cancelled_by = $2,
+                cancellation_fee = $3,
+                cancellation_reason = $4
+          WHERE id = $1 RETURNING *`,
+        [row.id, req.user.id, fee, String(reason || '').slice(0, 500) || null],
+      );
+      return res.json({ booking: updated, fee });
+    }
+
+    return res.status(400).json({ error: 'invalid_action' });
   } catch (err) { next(err); }
 });
 

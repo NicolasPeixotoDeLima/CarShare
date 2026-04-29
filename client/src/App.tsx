@@ -7,6 +7,7 @@ import { Checkout } from './pages/Checkout';
 import { Success } from './pages/Success';
 import { Profile } from './pages/Profile';
 import { Help } from './pages/Help';
+import { Chat } from './pages/Chat';
 import { NotFound } from './pages/NotFound';
 
 import { Bookings as CustomerBookings } from './pages/customer/Bookings';
@@ -18,12 +19,14 @@ import { OwnerDashboard } from './pages/owner/OwnerDashboard';
 import { OwnerCars }      from './pages/owner/OwnerCars';
 import { OwnerCarForm }   from './pages/owner/OwnerCarForm';
 import { OwnerBookings }  from './pages/owner/OwnerBookings';
+import { OwnerInvoices }  from './pages/owner/OwnerInvoices';
 
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminUsers }     from './pages/admin/AdminUsers';
 import { AdminCars }      from './pages/admin/AdminCars';
 import { AdminBookings }  from './pages/admin/AdminBookings';
 import { AdminInvoices }  from './pages/admin/AdminInvoices';
+import { AdminAudit }     from './pages/admin/AdminAudit';
 
 export function App() {
   const location = useLocation();
@@ -45,6 +48,7 @@ export function App() {
       <Route path="/invoices"  element={<CustomerInvoices />} />
       <Route path="/favorites" element={<CustomerFavorites />} />
       <Route path="/account"   element={<Account />} />
+      <Route path="/chat"      element={<Chat />} />
 
       {/* Proprietário (gated no layout) */}
       <Route path="/owner"               element={<OwnerDashboard />} />
@@ -52,6 +56,7 @@ export function App() {
       <Route path="/owner/cars/new"      element={<OwnerCarForm />} />
       <Route path="/owner/cars/:id/edit" element={<OwnerCarForm />} />
       <Route path="/owner/bookings"      element={<OwnerBookings />} />
+      <Route path="/owner/invoices"      element={<OwnerInvoices />} />
 
       {/* Admin (gated no layout) */}
       <Route path="/admin"          element={<AdminDashboard />} />
@@ -59,6 +64,7 @@ export function App() {
       <Route path="/admin/cars"     element={<AdminCars />} />
       <Route path="/admin/bookings" element={<AdminBookings />} />
       <Route path="/admin/invoices" element={<AdminInvoices />} />
+      <Route path="/admin/audit"    element={<AdminAudit />} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>

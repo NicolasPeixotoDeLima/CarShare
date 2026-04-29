@@ -52,6 +52,13 @@ router.post('/login', async (req, res, next) => {
     if (!row) return res.status(401).json({ error: 'invalid_credentials' });
     if (!bcrypt.compareSync(password, row.password)) return res.status(401).json({ error: 'invalid_credentials' });
 
+    if (row.status === 'banned') {
+      return res.status(403).json({ error: 'account_banned', message: 'Esta conta foi banida.' });
+    }
+    if (row.status === 'suspended') {
+      return res.status(403).json({ error: 'account_suspended', message: 'Esta conta está suspensa.' });
+    }
+
     const user = { id: row.id, name: row.name, email: row.email, role: row.role, phone: row.phone };
     const token = signToken(user);
     res.cookie('token', token, COOKIE_OPTS);

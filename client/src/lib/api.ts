@@ -10,13 +10,23 @@ import type {
   AdminUserRow,
   AdminBookingRow,
   AdminInvoiceRow,
+  AdminAuditRow,
   AdminListResponse,
   Role,
+  UserStatus,
   BookingStatus,
   OwnerStats,
   OwnerBookingRow,
+  OwnerInvoiceRow,
   UserBookingRow,
   UserInvoiceRow,
+  ChatThread,
+  ChatThreadSummary,
+  ChatMessage,
+  CarComment,
+  ProfileReview,
+  ProfileReviewsResponse,
+  NotificationsResponse,
 } from './types';
 
 export class ApiError extends Error {
@@ -82,6 +92,10 @@ export const api = {
       request<{ booking: Booking }>('POST', '/bookings', data),
     get: (code: string) =>
       request<{ booking: Booking; invoices: Invoice[] }>('GET', '/bookings/' + code),
+    confirmDelivery: (code: string) =>
+      request<{ booking: Booking }>('PATCH', '/bookings/' + code, { action: 'confirm_delivery' }),
+    cancel: (code: string, reason?: string) =>
+      request<{ booking: Booking; fee: number }>('PATCH', '/bookings/' + code, { action: 'cancel', reason }),
   },
   favorites: {
     toggle: (carId: number) =>
@@ -106,6 +120,22 @@ export const api = {
       const qs = p.toString();
       return request<AdminListResponse<OwnerBookingRow>>('GET', '/owner/bookings' + (qs ? '?' + qs : ''));
     },
+    invoices: (params: { paid?: boolean; overdue?: boolean; q?: string; limit?: number; offset?: number } = {}) => {
+      const p = new URLSearchParams();
+      if (params.paid    != null) p.set('paid',    String(params.paid));
+      if (params.overdue != null) p.set('overdue', String(params.overdue));
+      if (params.q)              p.set('q', params.q);
+      if (params.limit  != null) p.set('limit',  String(params.limit));
+      if (params.offset != null) p.set('offset', String(params.offset));
+      const qs = p.toString();
+      return request<AdminListResponse<OwnerInvoiceRow>>('GET', '/owner/invoices' + (qs ? '?' + qs : ''));
+    },
+    markDelivered: (code: string) =>
+      request<{ booking: Booking }>('PATCH', `/owner/bookings/${code}`, { action: 'mark_delivered' }),
+    cancelBooking: (code: string, reason?: string) =>
+      request<{ booking: Booking; fee: number }>('PATCH', `/owner/bookings/${code}`, { action: 'cancel', reason }),
+    finishBooking: (code: string) =>
+      request<{ booking: Booking }>('PATCH', `/owner/bookings/${code}`, { action: 'finish' }),
     /* Reusa /api/cars com owner=me para listar meus carros e CRUD */
     myCars: () => request<CarsListResponse>('GET', '/cars?owner=me&limit=200'),
     createCar: (data: Partial<Car>) =>
@@ -127,9 +157,20 @@ export const api = {
       const qs = p.toString();
       return request<AdminListResponse<AdminUserRow>>('GET', '/admin/users' + (qs ? '?' + qs : ''));
     },
-    updateUser: (id: number, patch: Partial<{ name: string; email: string; phone: string; role: Role }>) =>
+    updateUser: (id: number, patch: Partial<{ name: string; email: string; phone: string; role: Role; status: UserStatus; status_reason: string }>) =>
       request<AdminUserRow>('PATCH', `/admin/users/${id}`, patch),
     deleteUser: (id: number) => request<{ ok: true }>('DELETE', `/admin/users/${id}`),
+
+    audit: (params: { action?: string; entity?: string; admin_id?: number; limit?: number; offset?: number } = {}) => {
+      const p = new URLSearchParams();
+      if (params.action)   p.set('action', params.action);
+      if (params.entity)   p.set('entity', params.entity);
+      if (params.admin_id != null) p.set('admin_id', String(params.admin_id));
+      if (params.limit  != null)   p.set('limit',  String(params.limit));
+      if (params.offset != null)   p.set('offset', String(params.offset));
+      const qs = p.toString();
+      return request<AdminListResponse<AdminAuditRow>>('GET', '/admin/audit' + (qs ? '?' + qs : ''));
+    },
 
     bookings: (params: { status?: BookingStatus; user_id?: number; car_id?: number; q?: string; limit?: number; offset?: number } = {}) => {
       const p = new URLSearchParams();
@@ -157,6 +198,32 @@ export const api = {
     updateInvoice: (id: number, patch: { paid: boolean }) =>
       request<Invoice>('PATCH', `/admin/invoices/${id}`, patch),
   },
+  chat: {
+    threads: () => request<{ items: ChatThreadSummary[] }>('GET', '/chat/threads'),
+    get:     (code: string) => request<ChatThread>('GET', '/chat/' + code),
+    send:    (code: string, body: string) =>
+      request<{ message: ChatMessage }>('POST', '/chat/' + code, { body }),
+  },
+  comments: {
+    list:   (idOrSlug: string | number) =>
+      request<{ items: CarComment[] }>('GET', `/comments/cars/${idOrSlug}`),
+    create: (idOrSlug: string | number, body: string) =>
+      request<{ comment: CarComment }>('POST', `/comments/cars/${idOrSlug}`, { body }),
+    remove: (id: number) =>
+      request<{ ok: true }>('DELETE', `/comments/${id}`),
+  },
+  reviews: {
+    forUser: (userId: number) =>
+      request<ProfileReviewsResponse>('GET', `/reviews/users/${userId}`),
+    me:      () => request<ProfileReviewsResponse>('GET', '/reviews/me'),
+    create:  (userId: number, data: { rating: number; body?: string }) =>
+      request<{ review: ProfileReview }>('POST', `/reviews/users/${userId}`, data),
+    remove:  (id: number) =>
+      request<{ ok: true }>('DELETE', `/reviews/${id}`),
+  },
+  notifications: {
+    list: () => request<NotificationsResponse>('GET', '/notifications'),
+  },
 };
 
 export const fmt = {
@@ -172,6 +239,12 @@ export const fmt = {
   },
   daysBetween: (a: string | Date, b: string | Date) =>
     Math.max(0, Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000)),
+  /** Formata o valor de franquia mensal — 'livre' vira "Km livre", numerico
+   *  vira "1.500 km/mês". Usado em todas as paginas que mostram km_limit. */
+  km: (value: string) =>
+    value === 'livre'
+      ? 'Km livre'
+      : `${Number(value).toLocaleString('pt-BR')} km/mês`,
 };
 
 export const LABELS = {
@@ -188,9 +261,10 @@ export const LABELS = {
     'sao-paulo':'São Paulo', rio:'Rio de Janeiro', bh:'Belo Horizonte',
     curitiba:'Curitiba', poa:'Porto Alegre',
   } as const,
+  /** @deprecated use fmt.km(value) — preserved aqui só pra cobertura legada. */
   km: {
-    '1500':'1.500 km/mês', '2500':'2.500 km/mês', 'livre':'Km livre',
-  } as const,
+    '1500':'1.500 km/mês', '2500':'2.500 km/mês', '5000':'5.000 km/mês', 'livre':'Km livre',
+  } as Record<string, string>,
   extra: {
     seguro_plus:'Seguro total premium',
     manutencao_premium:'Manutenção e revisões',

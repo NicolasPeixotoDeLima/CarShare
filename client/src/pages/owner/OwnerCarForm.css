@@ -1,0 +1,398 @@
+/* ============================================================
+   OWNER CAR FORM — layout moderno em secoes
+   ============================================================ */
+
+.car-form {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start;
+  animation: fade-in-up var(--dur-base) var(--ease-out) both;
+}
+
+.car-form__main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ===================== SECAO ===================== */
+
+.cf-section {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  overflow: hidden;
+  transition: border-color var(--dur-base) var(--ease-out);
+}
+.cf-section:hover { border-color: var(--line); }
+
+.cf-section__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, var(--bg-2), transparent);
+}
+.cf-section__num {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, oklch(0.82 0.14 75 / .15), oklch(0.82 0.14 75 / .05));
+  border: 1px solid oklch(0.82 0.14 75 / .35);
+  display: grid; place-items: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--amber);
+  font-weight: 600;
+}
+.cf-section__title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  letter-spacing: -.01em;
+  line-height: 1;
+}
+.cf-section__sub {
+  font-size: 12px;
+  color: var(--fg-mute);
+  margin-top: 3px;
+}
+
+.cf-section__body {
+  padding: 22px 24px;
+  display: grid;
+  gap: 16px;
+}
+
+/* ===================== GRID DE CAMPOS ===================== */
+
+.cf-grid {
+  display: grid;
+  gap: 14px;
+}
+.cf-grid--2 { grid-template-columns: repeat(2, 1fr); }
+.cf-grid--3 { grid-template-columns: repeat(3, 1fr); }
+
+/* ===================== FIELD (input + label) ===================== */
+
+.cf-field { display: grid; gap: 6px; position: relative; }
+
+.cf-field__label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cf-field__label .req {
+  color: var(--amber);
+  font-size: 14px;
+  line-height: 0;
+}
+
+.cf-field__hint {
+  font-size: 11px;
+  color: var(--fg-mute);
+  font-family: 'Geist Mono', monospace;
+  margin-top: 2px;
+  letter-spacing: .02em;
+}
+
+/* ===================== INPUTS ===================== */
+
+.cf-input,
+.cf-select,
+.cf-textarea {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  color: var(--fg);
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow   var(--dur-base) var(--ease-out),
+    background   var(--dur-fast) var(--ease-out);
+}
+.cf-input:focus,
+.cf-select:focus,
+.cf-textarea:focus {
+  border-color: var(--amber);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 3px oklch(0.82 0.14 75 / .12);
+}
+.cf-input:hover:not(:focus),
+.cf-select:hover:not(:focus),
+.cf-textarea:hover:not(:focus) { border-color: var(--line); }
+
+/* number inputs com unidade ao lado */
+.cf-input-group {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+.cf-input-group .cf-input {
+  padding-right: 50px;
+  font-variant-numeric: tabular-nums;
+}
+.cf-input-group__suffix {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--fg-mute);
+  letter-spacing: .04em;
+  pointer-events: none;
+}
+
+.cf-textarea {
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.55;
+}
+
+/* select tem appearance custom (chevron) */
+.cf-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+/* ===================== CHIPS (radio em grupo) ===================== */
+
+.cf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cf-chip {
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  color: var(--fg-dim);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.cf-chip:hover {
+  border-color: var(--line);
+  color: var(--fg);
+  transform: translateY(-1px);
+}
+.cf-chip.is-on {
+  background: linear-gradient(135deg, oklch(0.82 0.14 75 / .18), oklch(0.82 0.14 75 / .08));
+  border-color: oklch(0.82 0.14 75 / .55);
+  color: var(--amber);
+  font-weight: 500;
+}
+.cf-chip__ic {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  opacity: .7;
+}
+
+/* ===================== ASIDE (preview + ações) ===================== */
+
+.cf-aside {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cf-preview {
+  background: linear-gradient(160deg, oklch(0.22 0.04 60 / .35), var(--surface));
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.cf-preview::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(360px 220px at 80% 0%, oklch(0.82 0.14 75 / .12), transparent 60%);
+  pointer-events: none;
+}
+.cf-preview__eb {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--fg-mute);
+  position: relative;
+}
+.cf-preview__title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 32px;
+  line-height: 1.05;
+  letter-spacing: -.015em;
+  margin-top: 6px;
+  position: relative;
+}
+.cf-preview__title .muted { color: var(--fg-mute); font-style: italic; }
+.cf-preview__sub {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11.5px;
+  color: var(--fg-mute);
+  letter-spacing: .04em;
+  margin-top: 6px;
+  position: relative;
+}
+.cf-preview__stage {
+  margin: 18px 0 12px;
+  height: 100px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.cf-preview__stage svg { width: 100%; max-width: 240px; }
+.cf-preview__price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'Instrument Serif', serif;
+  font-size: 30px;
+  letter-spacing: -.01em;
+  position: relative;
+}
+.cf-preview__price .cur { font-size: 14px; color: var(--fg-mute); }
+.cf-preview__price .per { font-size: 12px; color: var(--fg-mute); margin-left: 4px; font-family: inherit; }
+.cf-preview__slug {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border: 1px dashed var(--line-soft);
+  border-radius: 8px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--fg-mute);
+  letter-spacing: .02em;
+  word-break: break-all;
+  position: relative;
+}
+.cf-preview__slug strong { color: var(--amber); font-weight: 500; }
+
+/* footer sticky com botoes */
+.cf-actions {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cf-actions__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.cf-actions .btn { justify-content: center; }
+.cf-actions .btn--primary { padding: 12px 18px; font-size: 14px; }
+.cf-actions__hint {
+  font-size: 11px;
+  color: var(--fg-mute);
+  font-family: 'Geist Mono', monospace;
+  text-align: center;
+  letter-spacing: .04em;
+}
+
+/* ===================== FRANQUIAS (KM) ===================== */
+
+.km-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.km-row-edit {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  animation: fade-in-up var(--dur-base) var(--ease-out) both;
+}
+.km-row-edit__rm {
+  width: 36px; height: 44px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  color: var(--fg-mute);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.km-row-edit__rm:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: oklch(0.68 0.18 25 / .4);
+  background: oklch(0.68 0.18 25 / .08);
+}
+.km-row-edit__rm:disabled { opacity: .35; cursor: not-allowed; }
+
+@media (max-width: 720px) {
+  .km-row-edit {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'a r'
+      'b r';
+  }
+  .km-row-edit > :nth-child(1) { grid-area: a; }
+  .km-row-edit > :nth-child(2) { grid-area: b; }
+  .km-row-edit > :nth-child(3) { grid-area: r; align-self: stretch; height: auto; }
+}
+
+/* mensagens */
+.cf-msg {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  letter-spacing: .02em;
+  animation: slide-in-down var(--dur-base) var(--ease-out) both;
+}
+.cf-msg--err {
+  background: oklch(0.68 0.18 25 / .12);
+  color: var(--danger);
+  border: 1px solid oklch(0.68 0.18 25 / .25);
+}
+
+/* ===================== RESPONSIVO ===================== */
+
+@media (max-width: 1100px) {
+  .car-form { grid-template-columns: 1fr; }
+  .cf-aside { position: static; }
+  .cf-grid--3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .cf-grid--2,
+  .cf-grid--3 { grid-template-columns: 1fr; }
+  .cf-section__head { padding: 14px 18px; }
+  .cf-section__body { padding: 18px; }
+}

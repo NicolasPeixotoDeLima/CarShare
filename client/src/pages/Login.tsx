@@ -12,7 +12,20 @@ const ERROR_MESSAGES: Record<string, string> = {
   weak_password:       'A senha precisa ter pelo menos 8 caracteres.',
   missing_fields:      'Preencha todos os campos obrigatórios.',
   invalid_role:        'Tipo de conta inválido.',
+  account_banned:      'Esta conta foi banida. Contate o suporte.',
+  account_suspended:   'Esta conta está suspensa. Contate o suporte.',
 };
+
+/** Rota inicial pos-login segue a separacao estrita de roles:
+ *   - admin        → /admin   (painel administrativo)
+ *   - proprietario → /owner   (painel do proprietario, nao tem fluxo cliente)
+ *   - cliente      → /        (home com mapa, podera assinar carros)
+ */
+function destinationFor(role: string, requested: string | null) {
+  if (role === 'admin')        return '/admin';
+  if (role === 'proprietario') return '/owner';
+  return requested || '/';
+}
 
 export function Login() {
   const [params, setParams] = useSearchParams();
@@ -39,18 +52,13 @@ export function Login() {
     else setParams({}, { replace: true });
   }
 
-  function goNext() {
-    const next = params.get('next') || '/profile';
-    navigate(next);
-  }
-
   async function submitLogin(e: FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await api.auth.login({ email: loginEmail, password: loginPw });
-      goNext();
+      const r = await api.auth.login({ email: loginEmail, password: loginPw });
+      navigate(destinationFor(r.user.role, params.get('next')));
     } catch (err) {
       const code = err instanceof ApiError ? err.code : 'unknown';
       setError(ERROR_MESSAGES[code] || 'Não foi possível entrar.');
@@ -64,8 +72,8 @@ export function Login() {
     setError('');
     setLoading(true);
     try {
-      await api.auth.signup({ name, email: signupEmail, password: signupPw, phone, role: signupRole });
-      goNext();
+      const r = await api.auth.signup({ name, email: signupEmail, password: signupPw, phone, role: signupRole });
+      navigate(destinationFor(r.user.role, params.get('next')));
     } catch (err) {
       const code = err instanceof ApiError ? err.code : 'unknown';
       setError(ERROR_MESSAGES[code] || 'Não foi possível criar a conta.');

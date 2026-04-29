@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CustomerLayout } from './customer/CustomerLayout';
 import { CarSilhouette } from '../components/CarSilhouette';
+import { ReviewsSection } from '../components/ReviewsSection';
 import { api, fmt, LABELS } from '../lib/api';
 import type { ProfileResponse } from '../lib/types';
 import './Profile.css';
+import './Chat.css';
 
 function maskCPF(cpf: string | null | undefined) {
   if (!cpf) return '—';
@@ -33,7 +35,7 @@ export function Profile() {
   const first = (user.name || 'Conta').split(' ')[0];
 
   return (
-    <CustomerLayout title={`Olá, ${first}.`} subtitle="Visão geral · sua conta">
+    <CustomerLayout requiredRole="cliente" title={`Olá, ${first}.`} subtitle="Visão geral · sua conta">
       {active ? (
         <section className="current-car">
           <div className="current-car__left">
@@ -80,7 +82,7 @@ export function Profile() {
             <div className="k">Mensalidade</div>
             <div className="v">{fmt.brl(active.monthly_price)}</div>
             <div className="d">
-              {active.category && LABELS.category[active.category]} · {LABELS.km[active.km_limit]}
+              {active.category && LABELS.category[active.category]} · {fmt.km(active.km_limit)}
             </div>
           </div>
           <div className="m-card">
@@ -228,6 +230,8 @@ export function Profile() {
           </div>
         </div>
       </section>
+
+      <ReviewsSection targetUserId={user.id} />
     </CustomerLayout>
   );
 }

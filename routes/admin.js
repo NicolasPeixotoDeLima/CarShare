@@ -1,12 +1,13 @@
 const express = require('express');
 const db = require('../db');
-const { requireRole } = require('../middleware/auth');
+const { requireRole, recordAudit } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(requireRole('admin'));
 
 const ROLES = new Set(['admin', 'cliente', 'proprietario']);
 const BOOKING_STATUSES = new Set(['active', 'scheduled', 'finished', 'cancelled']);
+const USER_STATUSES = new Set(['active', 'suspended', 'banned']);
 
 /* ============ STATS / DASHBOARD ============ */
 
@@ -88,6 +89,7 @@ router.get('/users', async (req, res, next) => {
 
     const items = await db.all(
       `SELECT u.id, u.name, u.email, u.role, u.phone, u.cpf, u.cnh, u.created_at,
+              u.status, u.status_reason,
               (SELECT COUNT(*)::int FROM bookings WHERE user_id = u.id) AS bookings_count,
               (SELECT COUNT(*)::int FROM cars     WHERE owner_id = u.id) AS cars_count
          FROM users u ${whereSql}
@@ -106,12 +108,12 @@ router.get('/users', async (req, res, next) => {
 router.patch('/users/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const target = await db.one('SELECT id, role FROM users WHERE id = $1', [id]);
+    const target = await db.one('SELECT id, role, status FROM users WHERE id = $1', [id]);
     if (!target) return res.status(404).json({ error: 'not_found' });
 
     const sets = [];
     const values = [];
-    const allow = ['name', 'email', 'phone', 'role'];
+    const allow = ['name', 'email', 'phone', 'role', 'status', 'status_reason'];
 
     for (const f of allow) {
       if (req.body[f] === undefined) continue;
@@ -122,6 +124,12 @@ router.patch('/users/:id', async (req, res, next) => {
           return res.status(400).json({ error: 'cannot_demote_self' });
         }
       }
+      if (f === 'status') {
+        if (!USER_STATUSES.has(req.body.status)) return res.status(400).json({ error: 'invalid_status' });
+        if (id === req.user.id && req.body.status !== 'active') {
+          return res.status(400).json({ error: 'cannot_disable_self' });
+        }
+      }
       values.push(req.body[f]);
       sets.push(`${f} = $${values.length}`);
     }
@@ -130,9 +138,20 @@ router.patch('/users/:id', async (req, res, next) => {
     values.push(id);
     const updated = await db.one(
       `UPDATE users SET ${sets.join(', ')} WHERE id = $${values.length}
-         RETURNING id, name, email, role, phone, cpf, cnh, created_at`,
+         RETURNING id, name, email, role, phone, cpf, cnh, status, status_reason, created_at`,
       values,
     );
+
+    // Audit log: 1 evento por campo alterado de seguranca
+    if (req.body.status !== undefined) {
+      await recordAudit(req, 'user.' + req.body.status, 'user', id,
+        { reason: req.body.status_reason || null, prev: target.status });
+    }
+    if (req.body.role !== undefined && req.body.role !== target.role) {
+      await recordAudit(req, 'user.role_change', 'user', id,
+        { from: target.role, to: req.body.role });
+    }
+
     res.json(updated);
   } catch (err) { next(err); }
 });
@@ -141,8 +160,10 @@ router.delete('/users/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (id === req.user.id) return res.status(400).json({ error: 'cannot_delete_self' });
+    const before = await db.one('SELECT name, email, role FROM users WHERE id = $1', [id]);
     const r = await db.run('DELETE FROM users WHERE id = $1', [id]);
     if (!r.rowCount) return res.status(404).json({ error: 'not_found' });
+    await recordAudit(req, 'user.delete', 'user', id, before || {});
     res.json({ ok: true });
   } catch (err) { next(err); }
 });
@@ -200,11 +221,14 @@ router.patch('/bookings/:id', async (req, res, next) => {
     const id = parseInt(req.params.id, 10);
     const { status } = req.body || {};
     if (!BOOKING_STATUSES.has(status)) return res.status(400).json({ error: 'invalid_status' });
+    const before = await db.one('SELECT status, code FROM bookings WHERE id = $1', [id]);
     const updated = await db.one(
       `UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *`,
       [status, id],
     );
     if (!updated) return res.status(404).json({ error: 'not_found' });
+    await recordAudit(req, 'booking.status', 'booking', id,
+      { code: updated.code, from: before?.status, to: status });
     res.json(updated);
   } catch (err) { next(err); }
 });
@@ -258,7 +282,42 @@ router.patch('/invoices/:id', async (req, res, next) => {
       [paid, id],
     );
     if (!updated) return res.status(404).json({ error: 'not_found' });
+    await recordAudit(req, paid ? 'invoice.mark_paid' : 'invoice.mark_unpaid',
+      'invoice', id, { amount: updated.amount });
     res.json(updated);
+  } catch (err) { next(err); }
+});
+
+/* ============ AUDIT LOG ============ */
+
+router.get('/audit', async (req, res, next) => {
+  try {
+    const { action, admin_id, entity, limit = 100, offset = 0 } = req.query;
+    const where = [];
+    const params = [];
+    if (action) { params.push(`%${action}%`); where.push(`action ILIKE $${params.length}`); }
+    if (entity) { params.push(entity); where.push(`target_entity = $${params.length}`); }
+    if (admin_id && /^\d+$/.test(admin_id)) {
+      params.push(parseInt(admin_id, 10));
+      where.push(`admin_id = $${params.length}`);
+    }
+    const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const lim = Math.min(parseInt(limit, 10) || 100, 500);
+    const off = Math.max(parseInt(offset, 10) || 0, 0);
+
+    const items = await db.all(
+      `SELECT id, admin_id, admin_email, action, target_entity, target_id,
+              payload, ip, user_agent, created_at
+         FROM admin_audit_log ${whereSql}
+        ORDER BY created_at DESC, id DESC
+        LIMIT ${lim} OFFSET ${off}`,
+      params,
+    );
+    const { c: total } = await db.one(
+      `SELECT COUNT(*)::int AS c FROM admin_audit_log ${whereSql}`,
+      params,
+    );
+    res.json({ items, total, limit: lim, offset: off });
   } catch (err) { next(err); }
 });
 

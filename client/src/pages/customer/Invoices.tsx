@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CustomerLayout } from './CustomerLayout';
+import { StatusTag } from '../../components/StatusTag';
 import { api, fmt } from '../../lib/api';
 import type { UserInvoiceRow } from '../../lib/types';
 
@@ -20,7 +21,7 @@ export function Invoices() {
   const overdueSum = items?.filter(i => !i.paid && i.due_date < today).reduce((s, i) => s + i.amount, 0) ?? 0;
 
   return (
-    <CustomerLayout title="Faturas" subtitle="Cobranças mensais">
+    <CustomerLayout requiredRole="cliente" title="Faturas" subtitle="Cobranças mensais">
       {items === null ? (
         <div className="c-empty">Carregando…</div>
       ) : items.length === 0 ? (
@@ -49,7 +50,7 @@ export function Invoices() {
                     </div>
                   </div>
                   <div className="c-row__amt">{fmt.brl(inv.amount)}</div>
-                  <span className={`tag tag--${tag}`}>{tagLabel}</span>
+                  <StatusTag variant={tag}>{tagLabel}</StatusTag>
                 </div>
               );
             })}

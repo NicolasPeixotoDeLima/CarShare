@@ -1,9 +1,12 @@
 const express = require('express');
 const db = require('../db');
-const { authRequired } = require('../middleware/auth');
+const { authRequired, blockRoles } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(authRequired);
+// Favoritar é acao de cliente — proprietario gerencia seus carros, nao
+// "favorita" os de terceiros; admin nao opera como usuario.
+router.use(blockRoles('admin', 'proprietario'));
 
 router.post('/:carId/toggle', async (req, res, next) => {
   try {

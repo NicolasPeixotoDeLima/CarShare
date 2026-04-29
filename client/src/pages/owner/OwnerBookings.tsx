@@ -1,5 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { OwnerLayout } from './OwnerLayout';
+import { Pager } from '../../components/Pager';
+import { EmptyState } from '../../components/EmptyState';
+import { FiltersBar } from '../../components/FiltersBar';
+import { StatusTag } from '../../components/StatusTag';
+import { Select } from '../../components/Select';
+import { BookingActions, BookingStatusHint } from '../../components/BookingActions';
+import { ReviewPrompt } from '../../components/ReviewPrompt';
 import { api, fmt } from '../../lib/api';
 import type { OwnerBookingRow, BookingStatus } from '../../lib/types';
 
@@ -34,79 +42,83 @@ export function OwnerBookings() {
 
   return (
     <OwnerLayout subtitle="Operação · clientes" title="Reservas dos meus carros">
-      <div className="panel">
-        <div className="filters">
+      <div className="panel" style={{ padding: 0 }}>
+        <FiltersBar count={`${total} ${total === 1 ? 'reserva' : 'reservas'}`}>
           <input
             type="search"
             placeholder="Buscar código, email ou nome…"
             value={q}
             onChange={e => { setOffset(0); setQ(e.target.value); }}
           />
-          <select value={status} onChange={e => { setOffset(0); setStatus(e.target.value as BookingStatus | ''); }}>
-            <option value="">Todos os status</option>
-            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 12, color: 'var(--fg-mute)', alignSelf: 'center' }}>
-            {total} {total === 1 ? 'reserva' : 'reservas'}
-          </span>
-        </div>
+          <Select
+            size="sm"
+            value={status}
+            onChange={v => { setOffset(0); setStatus(v as BookingStatus | ''); }}
+            options={[
+              { value: '', label: 'Todos os status' },
+              ...STATUSES.map(s => ({ value: s, label: s })),
+            ]}
+          />
+        </FiltersBar>
 
         {loading && !items.length ? (
-          <div className="empty">Carregando…</div>
+          <EmptyState>Carregando…</EmptyState>
         ) : items.length === 0 ? (
-          <div className="empty">Nenhuma reserva nos seus carros ainda.</div>
+          <EmptyState>Nenhuma reserva nos seus carros ainda.</EmptyState>
         ) : (
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Cliente</th>
-                <th>Carro</th>
-                <th>Período</th>
-                <th>Prazo</th>
-                <th className="right">Mensal</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((b, i) => (
-                <tr key={b.id} style={{ ['--i' as never]: i }}>
-                  <td className="mono">{b.code}</td>
-                  <td>
-                    <div>{b.user_name}</div>
-                    <div className="mono">{b.user_email}</div>
-                  </td>
-                  <td>{b.brand} {b.model}</td>
-                  <td className="mono" style={{ fontSize: 11 }}>
-                    {fmt.date(b.start_date)} → {fmt.date(b.end_date)}
-                  </td>
-                  <td>{b.term_months}m</td>
-                  <td className="right num">{fmt.brl(b.monthly_price)}</td>
-                  <td><span className={`tag tag--${b.status}`}>{b.status}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {items.map((b, i) => (
+              <article
+                key={b.id}
+                className="c-row"
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                  padding: 18, ['--i' as never]: i,
+                }}
+              >
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 16, alignItems: 'center' }}>
+                  <div>
+                    <div className="c-row__title">{b.brand} {b.model}</div>
+                    <div className="c-row__sub">
+                      <strong style={{ fontWeight: 500 }}>{b.user_name}</strong>
+                      {' · '}
+                      <span className="mono">{b.user_email}</span>
+                      {' · '}
+                      <span className="mono">{b.code}</span>
+                    </div>
+                    <div className="c-row__sub mono" style={{ marginTop: 2, fontSize: 11 }}>
+                      {fmt.date(b.start_date)} → {fmt.date(b.end_date)} · {b.term_months}m
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                      <BookingStatusHint booking={b} side="owner" />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 11, color: 'var(--fg-mute)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Mensal</div>
+                    <div className="c-row__amt">{fmt.brl(b.monthly_price)}</div>
+                  </div>
+                  <StatusTag variant={b.status} />
+                  <Link to={`/chat?code=${b.code}`} className="btn btn--xs">
+                    ✉ chat
+                  </Link>
+                </div>
+
+                <BookingActions booking={b} side="owner" onChanged={load} compact />
+
+                {b.status === 'finished' && b.user_id && (
+                  <ReviewPrompt
+                    bookingCode={b.code}
+                    targetUserId={b.user_id}
+                    targetLabel="o cliente"
+                    onSubmitted={load}
+                  />
+                )}
+              </article>
+            ))}
+          </div>
         )}
 
-        <div className="pager">
-          <span>
-            {Math.min(offset + 1, total)}–{Math.min(offset + PAGE, total)} de {total}
-          </span>
-          <div className="pager__btns">
-            <button
-              className="btn btn--xs"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - PAGE))}
-            >← anterior</button>
-            <button
-              className="btn btn--xs"
-              disabled={offset + PAGE >= total}
-              onClick={() => setOffset(offset + PAGE)}
-            >próxima →</button>
-          </div>
-        </div>
+        <Pager offset={offset} pageSize={PAGE} total={total} onChange={setOffset} />
       </div>
     </OwnerLayout>
   );

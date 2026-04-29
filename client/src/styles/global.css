@@ -31,6 +31,18 @@ textarea {
   color: inherit;
 }
 
+/* Remove os botoes de incremento/decremento dos inputs numericos
+   (Chrome/Edge/Safari + Firefox) — usamos teclado/edicao manual. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .serif   { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.01em; }
 .mono    { font-family: 'Geist Mono', monospace; }
 .italic  { font-style: italic; }

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, fmt, LABELS } from '../lib/api';
 import type { Booking } from '../lib/types';
 import { useAuth } from '../lib/useAuth';
+import { BackButton } from '../components/BackButton';
 import './Success.css';
 
 export function Success() {
@@ -48,6 +49,7 @@ export function Success() {
 
   return (
     <div className="success-wrap">
+      <BackButton className="back-btn--floating" fallback="/profile" />
       <div className="success-burst">
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <path d="M5 12l5 5L20 7" />
@@ -84,7 +86,7 @@ export function Success() {
         </div>
         <div className="receipt__row">
           <span>Franquia</span>
-          <span className="v">{LABELS.km[booking.km_limit]}</span>
+          <span className="v">{fmt.km(booking.km_limit)}</span>
         </div>
         <div className="receipt__row">
           <span>Pagamento</span>

@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { AdminLayout } from './AdminLayout';
+import { Pager } from '../../components/Pager';
+import { EmptyState } from '../../components/EmptyState';
+import { FiltersBar } from '../../components/FiltersBar';
+import { Select } from '../../components/Select';
 import { api, fmt } from '../../lib/api';
 import type { AdminBookingRow, BookingStatus } from '../../lib/types';
 
@@ -44,27 +48,28 @@ export function AdminBookings() {
   return (
     <AdminLayout subtitle="Gestão · operações" title="Reservas">
       <div className="panel">
-        <div className="filters">
+        <FiltersBar count={`${total} ${total === 1 ? 'reserva' : 'reservas'}`}>
           <input
             type="search"
             placeholder="Buscar código, email ou nome…"
             value={q}
             onChange={e => { setOffset(0); setQ(e.target.value); }}
           />
-          <select value={status} onChange={e => { setOffset(0); setStatus(e.target.value as BookingStatus | ''); }}>
-            <option value="">Todos os status</option>
-            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 12, color: 'var(--fg-mute)', alignSelf: 'center' }}>
-            {total} {total === 1 ? 'reserva' : 'reservas'}
-          </span>
-        </div>
+          <Select
+            size="sm"
+            value={status}
+            onChange={v => { setOffset(0); setStatus(v as BookingStatus | ''); }}
+            options={[
+              { value: '', label: 'Todos os status' },
+              ...STATUSES.map(s => ({ value: s, label: s })),
+            ]}
+          />
+        </FiltersBar>
 
         {loading && !items.length ? (
-          <div className="empty">Carregando…</div>
+          <EmptyState>Carregando…</EmptyState>
         ) : items.length === 0 ? (
-          <div className="empty">Nenhuma reserva encontrada.</div>
+          <EmptyState>Nenhuma reserva encontrada.</EmptyState>
         ) : (
           <table className="tbl">
             <thead>
@@ -98,13 +103,12 @@ export function AdminBookings() {
                   <td className="right num">{fmt.brl(b.monthly_price)}</td>
                   <td className="right num">{fmt.brl(b.total_price)}</td>
                   <td>
-                    <select
-                      className="status-select"
+                    <Select
+                      size="sm"
                       value={b.status}
-                      onChange={e => changeStatus(b.id, e.target.value as BookingStatus)}
-                    >
-                      {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                      onChange={v => changeStatus(b.id, v as BookingStatus)}
+                      options={STATUSES.map(s => ({ value: s, label: s }))}
+                    />
                   </td>
                 </tr>
               ))}
@@ -112,23 +116,7 @@ export function AdminBookings() {
           </table>
         )}
 
-        <div className="pager">
-          <span>
-            {Math.min(offset + 1, total)}–{Math.min(offset + PAGE, total)} de {total}
-          </span>
-          <div className="pager__btns">
-            <button
-              className="btn btn--xs"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - PAGE))}
-            >← anterior</button>
-            <button
-              className="btn btn--xs"
-              disabled={offset + PAGE >= total}
-              onClick={() => setOffset(offset + PAGE)}
-            >próxima →</button>
-          </div>
-        </div>
+        <Pager offset={offset} pageSize={PAGE} total={total} onChange={setOffset} />
       </div>
     </AdminLayout>
   );

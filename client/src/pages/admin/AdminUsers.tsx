@@ -1,7 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { AdminLayout } from './AdminLayout';
+import { Pager } from '../../components/Pager';
+import { EmptyState } from '../../components/EmptyState';
+import { FiltersBar } from '../../components/FiltersBar';
+import { StatusTag } from '../../components/StatusTag';
+import { Select } from '../../components/Select';
 import { api, fmt } from '../../lib/api';
-import type { AdminUserRow, Role } from '../../lib/types';
+import type { AdminUserRow, Role, UserStatus } from '../../lib/types';
 
 const PAGE = 50;
 
@@ -55,33 +60,50 @@ export function AdminUsers() {
     }
   }
 
+  async function changeStatus(u: AdminUserRow, status: UserStatus) {
+    const verb = status === 'banned' ? 'banir' : status === 'suspended' ? 'suspender' : 'reativar';
+    let reason: string | null | undefined = null;
+    if (status !== 'active') {
+      reason = prompt(`Motivo (opcional) para ${verb} ${u.name}:`, u.status_reason || '');
+      if (reason === null) return; // cancelado
+    }
+    if (!confirm(`Confirma ${verb} ${u.name} (${u.email})?`)) return;
+    try {
+      await api.admin.updateUser(u.id, { status, status_reason: reason || '' });
+      await load();
+    } catch (e: unknown) {
+      alert('Erro: ' + ((e as { code?: string }).code || 'falha'));
+    }
+  }
+
   return (
     <AdminLayout subtitle="Gestão · contas" title="Usuários">
       <div className="panel">
-        <div className="filters">
+        <FiltersBar count={`${total} ${total === 1 ? 'usuário' : 'usuários'}`}>
           <input
             type="search"
             placeholder="Buscar por nome ou email…"
             value={q}
             onChange={e => { setOffset(0); setQ(e.target.value); }}
           />
-          <select value={role} onChange={e => { setOffset(0); setRole(e.target.value as Role | ''); }}>
-            <option value="">Todas as roles</option>
-            <option value="admin">Admin</option>
-            <option value="cliente">Cliente</option>
-            <option value="proprietario">Proprietário</option>
-          </select>
-          <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 12, color: 'var(--fg-mute)', alignSelf: 'center' }}>
-            {total} {total === 1 ? 'usuário' : 'usuários'}
-          </span>
-        </div>
+          <Select
+            size="sm"
+            value={role}
+            onChange={v => { setOffset(0); setRole(v as Role | ''); }}
+            options={[
+              { value: '',             label: 'Todas as roles' },
+              { value: 'admin',        label: 'Admin' },
+              { value: 'cliente',      label: 'Cliente' },
+              { value: 'proprietario', label: 'Proprietário' },
+            ]}
+          />
+        </FiltersBar>
 
-        {err && <div className="empty">Erro: {err}</div>}
+        {err && <EmptyState>Erro: {err}</EmptyState>}
         {loading && !items.length ? (
-          <div className="empty">Carregando…</div>
+          <EmptyState>Carregando…</EmptyState>
         ) : items.length === 0 ? (
-          <div className="empty">Nenhum usuário encontrado.</div>
+          <EmptyState>Nenhum usuário encontrado.</EmptyState>
         ) : (
           <table className="tbl">
             <thead>
@@ -90,60 +112,74 @@ export function AdminUsers() {
                 <th>Nome</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th className="right">Reservas</th>
                 <th className="right">Carros</th>
                 <th>Cadastro</th>
-                <th></th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((u, i) => (
-                <tr key={u.id} style={{ ['--i' as never]: i }}>
-                  <td className="mono">#{u.id}</td>
-                  <td>{u.name}</td>
-                  <td className="mono">{u.email}</td>
-                  <td>
-                    <select
-                      className="role-select"
-                      value={u.role}
-                      onChange={e => changeRole(u.id, e.target.value as Role)}
-                    >
-                      <option value="cliente">cliente</option>
-                      <option value="proprietario">proprietario</option>
-                      <option value="admin">admin</option>
-                    </select>
-                  </td>
-                  <td className="right num">{u.bookings_count}</td>
-                  <td className="right num">{u.cars_count}</td>
-                  <td className="mono" style={{ fontSize: 11 }}>{fmt.dateLong(u.created_at)}</td>
-                  <td className="right">
-                    <button className="btn btn--xs btn--danger" onClick={() => remove(u)}>
-                      Excluir
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {items.map((u, i) => {
+                const status = u.status || 'active';
+                return (
+                  <tr key={u.id} style={{ ['--i' as never]: i, opacity: status === 'banned' ? 0.55 : 1 }}>
+                    <td className="mono">#{u.id}</td>
+                    <td>{u.name}</td>
+                    <td className="mono">{u.email}</td>
+                    <td>
+                      <Select
+                        size="sm"
+                        value={u.role}
+                        onChange={v => changeRole(u.id, v as Role)}
+                        options={[
+                          { value: 'cliente',      label: 'cliente' },
+                          { value: 'proprietario', label: 'proprietario' },
+                          { value: 'admin',        label: 'admin' },
+                        ]}
+                      />
+                    </td>
+                    <td>
+                      <StatusTag variant={status === 'active' ? 'active' : status === 'suspended' ? 'scheduled' : 'cancelled'}>
+                        {status}
+                      </StatusTag>
+                      {u.status_reason && (
+                        <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2, fontFamily: "'Geist Mono', monospace" }}>
+                          {u.status_reason}
+                        </div>
+                      )}
+                    </td>
+                    <td className="right num">{u.bookings_count}</td>
+                    <td className="right num">{u.cars_count}</td>
+                    <td className="mono" style={{ fontSize: 11 }}>{fmt.dateLong(u.created_at)}</td>
+                    <td className="right" style={{ whiteSpace: 'nowrap' }}>
+                      {status === 'active' && (
+                        <>
+                          <button className="btn btn--xs" onClick={() => changeStatus(u, 'suspended')} style={{ marginRight: 4 }}>
+                            Suspender
+                          </button>
+                          <button className="btn btn--xs btn--danger" onClick={() => changeStatus(u, 'banned')} style={{ marginRight: 4 }}>
+                            Banir
+                          </button>
+                        </>
+                      )}
+                      {status !== 'active' && (
+                        <button className="btn btn--xs" onClick={() => changeStatus(u, 'active')} style={{ marginRight: 4 }}>
+                          Reativar
+                        </button>
+                      )}
+                      <button className="btn btn--xs btn--danger" onClick={() => remove(u)}>
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
 
-        <div className="pager">
-          <span>
-            {offset + 1}–{Math.min(offset + PAGE, total)} de {total}
-          </span>
-          <div className="pager__btns">
-            <button
-              className="btn btn--xs"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - PAGE))}
-            >← anterior</button>
-            <button
-              className="btn btn--xs"
-              disabled={offset + PAGE >= total}
-              onClick={() => setOffset(offset + PAGE)}
-            >próxima →</button>
-          </div>
-        </div>
+        <Pager offset={offset} pageSize={PAGE} total={total} onChange={setOffset} />
       </div>
     </AdminLayout>
   );

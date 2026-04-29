@@ -22,6 +22,10 @@ app.use('/api/favorites', require('./routes/favorites'));
 app.use('/api/profile',   require('./routes/profile'));
 app.use('/api/admin',     require('./routes/admin'));
 app.use('/api/owner',     require('./routes/owner'));
+app.use('/api/chat',           require('./routes/chat'));
+app.use('/api/comments',       require('./routes/comments'));
+app.use('/api/reviews',        require('./routes/reviews'));
+app.use('/api/notifications',  require('./routes/notifications'));
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 

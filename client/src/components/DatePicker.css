@@ -1,0 +1,307 @@
+/* ===========================================================
+   DatePicker — calendario customizado com modos days/months/years
+   =========================================================== */
+
+.dpk {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 180px;
+  font-family: inherit;
+}
+
+.dpk__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.dpk__trigger:hover { border-color: var(--line); }
+.dpk__trigger:focus-visible,
+.dpk.is-open .dpk__trigger {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px oklch(0.82 0.14 75 / .12);
+  background: var(--surface-2);
+}
+.dpk.is-disabled .dpk__trigger { opacity: .55; cursor: not-allowed; }
+
+.dpk__value {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.dpk__value--placeholder { color: var(--fg-mute); }
+
+.dpk__icon { font-size: 14px; opacity: .8; }
+
+/* ============== popover ============== */
+
+.dpk__pop {
+  position: fixed;
+  z-index: 9999;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 22px 50px -22px oklch(0 0 0 / .65);
+  animation: dpk-pop 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  width: 320px;
+}
+@keyframes dpk-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ============== header ============== */
+
+.dpk__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.dpk__head-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dpk__nav {
+  width: 32px; height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--fg-dim);
+  font-size: 18px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.dpk__nav:hover:not(:disabled) {
+  color: var(--amber);
+  border-color: oklch(0.82 0.14 75 / .4);
+  background: var(--surface-2);
+}
+.dpk__nav:disabled { opacity: .35; cursor: not-allowed; }
+
+.dpk__title {
+  flex: 1;
+  text-align: center;
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+  letter-spacing: .01em;
+}
+.dpk__title:hover {
+  background: var(--bg-2);
+  border-color: var(--line-soft);
+  color: var(--amber);
+}
+.dpk__title--mono {
+  font-family: 'Geist Mono', monospace;
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+
+/* ============== painel animado por modo ============== */
+
+.dpk__panel {
+  animation: dpk-panel-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes dpk-panel-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Variantes — meses e anos entram com escala maior pra dar a sensacao
+   de "zoom out" (de dia → mes → ano vai pra um nivel mais abstrato) */
+.dpk__panel--months { animation-name: dpk-panel-zoom-out; }
+.dpk__panel--years  { animation-name: dpk-panel-zoom-out; animation-duration: 240ms; }
+@keyframes dpk-panel-zoom-out {
+  from { opacity: 0; transform: scale(1.08); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ============== weekdays + day grid ============== */
+
+.dpk__week,
+.dpk__grid--days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.dpk__wd {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--fg-mute);
+  text-align: center;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 4px;
+}
+
+/* ============== months / years grid ============== */
+
+.dpk__grid--months,
+.dpk__grid--years {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.dpk__grid--years { grid-template-columns: repeat(3, 1fr); }
+
+/* ============== celulas ============== */
+
+.dpk__cell {
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+  /* Stagger leve: cada celula entra com um pequeno atraso baseado em --i.
+     Animacao so de opacity pra nao conflitar com transform de hover/selected. */
+  animation: dpk-cell-in 280ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 8ms);
+}
+@keyframes dpk-cell-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Celulas dos grids de mes/ano sao maiores e entram com scale tambem */
+.dpk__grid--months .dpk__cell,
+.dpk__grid--years  .dpk__cell {
+  animation-name: dpk-cell-in-scale;
+  animation-delay: calc(var(--i, 0) * 14ms);
+  animation-duration: 320ms;
+}
+@keyframes dpk-cell-in-scale {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: none; }
+}
+/* Quando ja selecionado, o estado final do scale eh 1.02 — sobrescreve a
+   animacao no fim pra preservar o destaque visual. */
+.dpk__grid--months .dpk__cell.is-selected,
+.dpk__grid--years  .dpk__cell.is-selected {
+  animation-name: dpk-cell-in-selected;
+}
+@keyframes dpk-cell-in-selected {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1.02); }
+}
+/* Aspecto quadrado para os dias */
+.dpk__grid--days .dpk__cell { aspect-ratio: 1; }
+/* Maiores para meses/anos */
+.dpk__cell--lg { padding: 12px 8px; font-size: 13.5px; }
+.dpk__cell--mono { font-family: 'Geist Mono', monospace; letter-spacing: .04em; }
+
+.dpk__cell:hover:not(:disabled) {
+  background: var(--bg-2);
+  border-color: var(--line-soft);
+}
+.dpk__cell.is-outside { color: var(--fg-mute); opacity: .45; }
+.dpk__cell.is-today {
+  border-color: oklch(0.82 0.14 75 / .55);
+  color: var(--amber);
+  font-weight: 500;
+}
+.dpk__cell.is-selected,
+.dpk__cell.is-selected:hover {
+  background: var(--amber);
+  color: #1a1410;
+  font-weight: 600;
+  border-color: var(--amber);
+  transform: scale(1.02);
+}
+.dpk__cell.is-disabled {
+  opacity: .25;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+/* ============== footer ============== */
+
+.dpk__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.dpk__action {
+  padding: 7px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  color: var(--fg-dim);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.dpk__action:hover {
+  color: var(--fg);
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+.dpk__action--primary {
+  background: linear-gradient(135deg, var(--amber), var(--amber-2));
+  color: #1a1410;
+  border-color: transparent;
+  font-weight: 500;
+}
+.dpk__action--primary:hover {
+  background: linear-gradient(135deg, var(--amber-2), var(--amber));
+  color: #1a1410;
+}
+
+/* ============== integracao com forms ============== */
+.cf-field .dpk { width: 100%; }
+.c-form__row .dpk { width: 100%; }
+
+@media (max-width: 480px) {
+  .dpk__pop { width: 290px; padding: 12px; }
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Nav } from '../components/Nav';
+import { BackButton } from '../components/BackButton';
 import { useAuth } from '../lib/useAuth';
 import './Help.css';
 
@@ -60,6 +61,7 @@ export function Help() {
   return (
     <>
       <Nav user={user} onLogout={logout} activeSection="help" />
+      <BackButton className="back-btn--floating" />
 
       <div className="help-shell">
         <header className="help-head">

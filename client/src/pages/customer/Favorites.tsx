@@ -26,7 +26,7 @@ export function Favorites() {
   }
 
   return (
-    <CustomerLayout title="Favoritos" subtitle="Carros que você salvou">
+    <CustomerLayout requiredRole="cliente" title="Favoritos" subtitle="Carros que você salvou">
       {items === null ? (
         <div className="c-empty">Carregando…</div>
       ) : items.length === 0 ? (

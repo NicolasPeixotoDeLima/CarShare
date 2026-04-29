@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import type { User } from '../lib/types';
+import type { Role, User } from '../lib/types';
 import { Logo } from './Logo';
+import { NotificationsBell } from './NotificationsBell';
 import './Nav.css';
 
 interface NavProps {
@@ -8,6 +9,14 @@ interface NavProps {
   onLogout?: () => void | Promise<void>;
   variant?: 'overlay' | 'solid';
   activeSection?: 'subscribe' | 'fleet' | 'how' | 'cities' | 'help';
+}
+
+/** Rota "casa" do usuario logado — varia por role pra refletir a separacao
+ *  estrita: admin → painel admin, proprietario → painel owner, cliente → perfil. */
+function homeRouteFor(role: Role): string {
+  if (role === 'admin')        return '/admin';
+  if (role === 'proprietario') return '/owner';
+  return '/profile';
 }
 
 export function Nav({ user, onLogout, variant = 'overlay', activeSection }: NavProps) {
@@ -26,31 +35,44 @@ export function Nav({ user, onLogout, variant = 'overlay', activeSection }: NavP
       </Link>
 
       <div className="nav__links">
-        <NavLink to="/fleet" className={activeSection === 'fleet' ? 'is-active' : ''}>Frota</NavLink>
+        {/* Frota visivel pra cliente, proprietario e anonimo. Admin nao precisa
+            do atalho. Proprietario ve a vitrine mas sem CTAs de aluguel. */}
+        {(!user || user.role !== 'admin') && (
+          <NavLink to="/fleet" className={activeSection === 'fleet' ? 'is-active' : ''}>Frota</NavLink>
+        )}
         <Link to="/help"  className={activeSection === 'help' ? 'is-active' : ''}>Ajuda</Link>
         {user && (
-          <Link to="/profile">Minha conta</Link>
+          <Link to={homeRouteFor(user.role)}>Minha conta</Link>
         )}
       </div>
 
       <div className="nav__right">
         {user ? (
           <>
-            {user.role === 'admin' && (
-              <button className="pill" onClick={() => navigate('/admin')} title="Painel admin">
-                <span>▦</span>
-                <span>Admin</span>
-              </button>
+            {user.role !== 'admin' && (
+              <>
+                <button
+                  className="pill nav__chat"
+                  onClick={() => navigate('/chat')}
+                  title="Mensagens"
+                  aria-label="Mensagens"
+                >
+                  <span>✉</span>
+                </button>
+                <NotificationsBell />
+              </>
             )}
-            {user.role === 'proprietario' && (
-              <button className="pill" onClick={() => navigate('/owner')} title="Painel proprietário">
-                <span>▦</span>
-                <span>Painel</span>
-              </button>
-            )}
-            <button className="pill" onClick={() => navigate('/profile')}>
+            <button
+              className="pill"
+              onClick={() => navigate(homeRouteFor(user.role))}
+              title="Meu perfil"
+            >
               <span>●</span>
-              <span>{user.name.split(' ')[0]}</span>
+              <span>
+                {user.name.split(' ')[0]}
+                {user.role === 'admin'        ? ' · admin'        : ''}
+                {user.role === 'proprietario' ? ' · proprietário' : ''}
+              </span>
             </button>
             <button className="pill pill--cta" onClick={handleLogout}>Sair</button>
           </>

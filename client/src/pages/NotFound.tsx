@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
+import { BackButton } from '../components/BackButton';
 
 export function NotFound() {
   return (
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 40 }}>
+      <BackButton className="back-btn--floating" />
       <div style={{ textAlign: 'center' }}>
         <h1 className="serif" style={{ fontSize: 72, lineHeight: 1, marginBottom: 14 }}>
           404

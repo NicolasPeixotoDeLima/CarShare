@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Nav } from '../components/Nav';
+import { BackButton } from '../components/BackButton';
 import { CarSilhouette } from '../components/CarSilhouette';
+import { CommentsSection } from '../components/CommentsSection';
 import { useAuth } from '../lib/useAuth';
 import { api, fmt, LABELS, PRICING, ApiError } from '../lib/api';
 import { draft as draftStore } from '../lib/draft';
 import type { Car, ExtraKey, KmLimit, TermMonths } from '../lib/types';
 import './CarDetail.css';
+import './Chat.css';
 
 const TERM_OPTIONS: TermMonths[] = [1, 3, 6, 12];
-const KM_OPTIONS: Array<{ value: KmLimit; label: string }> = [
-  { value: '1500',  label: '1.500 km' },
-  { value: '2500',  label: '2.500 km' },
-  { value: 'livre', label: 'Livre' },
-];
+function kmShortLabel(v: string) {
+  return v === 'livre' ? 'Livre' : `${Number(v).toLocaleString('pt-BR')} km`;
+}
 const EXTRA_OPTIONS: Array<{ key: ExtraKey; label: string; price: number }> = [
   { key: 'seguro_plus',       label: 'Seguro total premium',        price: PRICING.extraMonthly.seguro_plus },
   { key: 'manutencao_premium',label: 'Manutenção e revisões',        price: PRICING.extraMonthly.manutencao_premium },
@@ -30,7 +31,7 @@ export function CarDetail() {
   const [car, setCar] = useState<Car | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [term, setTerm] = useState<TermMonths>(3);
-  const [km, setKm] = useState<KmLimit>('2500');
+  const [km, setKm] = useState<KmLimit>('');
   const [extras, setExtras] = useState<Set<ExtraKey>>(
     new Set(['seguro_plus', 'manutencao_premium'])
   );
@@ -42,7 +43,13 @@ export function CarDetail() {
     (async () => {
       try {
         const c = await api.cars.get(slug);
-        if (!cancelled) setCar(c);
+        if (!cancelled) {
+          setCar(c);
+          // Pre-seleciona uma franquia razoavel: '2500' se existir, senao a primeira
+          const opts = c.km_options ?? [];
+          const pref = opts.find(o => o.value === '2500') ?? opts[0];
+          if (pref) setKm(pref.value);
+        }
       } catch {
         if (!cancelled) setLoadError(true);
       }
@@ -53,8 +60,15 @@ export function CarDetail() {
   const monthlyFor = useMemo(() => (t: TermMonths) => {
     if (!car) return 0;
     const extrasCost = [...extras].reduce((s, k) => s + PRICING.extraMonthly[k], 0);
-    const kmCost     = PRICING.kmSurcharge[km];
-    const base       = car.price_month + extrasCost + kmCost;
+    const kmOption   = (car.km_options ?? []).find(o => o.value === km);
+    const kmCost     = kmOption?.surcharge ?? 0;
+    // Preco base por prazo definido pelo proprietario (term_prices). Fallback
+    // pra desconto historico se carro antigo nao tiver o JSON.
+    const tp = car.term_prices?.[String(t) as '1'|'3'|'6'|'12'];
+    if (Number.isFinite(tp) && tp! > 0) {
+      return tp! + extrasCost + kmCost;
+    }
+    const base = car.price_month + extrasCost + kmCost;
     return Math.round(base * PRICING.termDiscount[t]);
   }, [car, extras, km]);
 
@@ -101,6 +115,7 @@ export function CarDetail() {
     return (
       <>
         <Nav user={user} onLogout={logout} activeSection="fleet" />
+        <BackButton className="back-btn--floating" fallback="/fleet" />
         <div style={{ padding: '120px 40px', textAlign: 'center' }}>
           <h1 className="serif" style={{ fontSize: 40 }}>Carro não encontrado</h1>
           <p style={{ marginTop: 16 }}>
@@ -115,6 +130,7 @@ export function CarDetail() {
     return (
       <>
         <Nav user={user} onLogout={logout} activeSection="fleet" />
+        <BackButton className="back-btn--floating" fallback="/fleet" />
         <div style={{ padding: '120px 40px', textAlign: 'center', color: 'var(--fg-mute)' }}>
           Carregando…
         </div>
@@ -125,6 +141,7 @@ export function CarDetail() {
   return (
     <>
       <Nav user={user} onLogout={logout} activeSection="fleet" />
+      <BackButton className="back-btn--floating" fallback="/fleet" />
 
       <div className="car-bc mono">
         <Link to="/">Home</Link><span className="car-bc__sep">/</span>
@@ -152,9 +169,24 @@ export function CarDetail() {
             </div>
             <div className="car-info__title">{car.model}</div>
             <div className="car-info__rating">
-              <span className="score">4,8</span>
-              <span className="car-info__stars">★★★★★</span>
-              <span>· avaliações recentes</span>
+              {car.owner_rating && car.owner_rating.total > 0 ? (
+                <>
+                  <span className="score">
+                    {car.owner_rating.avg.toFixed(1).replace('.', ',')}
+                  </span>
+                  <span className="car-info__stars">
+                    {'★★★★★'.slice(0, Math.round(car.owner_rating.avg))}
+                    <span style={{ color: 'var(--fg-mute)' }}>
+                      {'★★★★★'.slice(Math.round(car.owner_rating.avg))}
+                    </span>
+                  </span>
+                  <span>
+                    · {car.owner_rating.total} {car.owner_rating.total === 1 ? 'avaliação' : 'avaliações'} do proprietário
+                  </span>
+                </>
+              ) : (
+                <span style={{ color: 'var(--fg-mute)' }}>Sem avaliações ainda do proprietário</span>
+              )}
             </div>
           </div>
 
@@ -186,13 +218,13 @@ export function CarDetail() {
             <div className="km-row">
               <span>Franquia mensal</span>
               <div className="km-seg">
-                {KM_OPTIONS.map(o => (
+                {(car.km_options ?? []).map(o => (
                   <button
                     key={o.value}
                     className={km === o.value ? 'is-on' : ''}
                     onClick={() => setKm(o.value)}
                   >
-                    {o.label}
+                    {kmShortLabel(o.value)}
                   </button>
                 ))}
               </div>
@@ -232,20 +264,37 @@ export function CarDetail() {
               </div>
             </div>
 
-            <div className="cta-row">
-              <button className="btn btn--primary" onClick={subscribe}>Assinar agora →</button>
-              <button
-                className={`btn btn--ghost ${favored ? 'is-on' : ''}`}
-                onClick={toggleFavorite}
-                title="Favoritar"
-              >
-                {favored ? '♥' : '♡'}
-              </button>
-            </div>
+            {user?.role === 'admin' || user?.role === 'proprietario' ? (
+              <div className="cta-row">
+                <span
+                  className="btn btn--ghost"
+                  style={{ flex: 1, justifyContent: 'center', cursor: 'default', color: 'var(--fg-mute)' }}
+                >
+                  {user.role === 'admin'
+                    ? 'Modo admin · operações de locação desativadas'
+                    : 'Modo proprietário · você não pode alugar carros'}
+                </span>
+              </div>
+            ) : (
+              <div className="cta-row">
+                <button className="btn btn--primary" onClick={subscribe}>Assinar agora →</button>
+                <button
+                  className={`btn btn--ghost ${favored ? 'is-on' : ''}`}
+                  onClick={toggleFavorite}
+                  title="Favoritar"
+                >
+                  {favored ? '♥' : '♡'}
+                </button>
+              </div>
+            )}
             <div className="car-note">Cancele quando quiser · sem multa</div>
           </div>
         </div>
       </section>
+
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 40px 60px' }}>
+        <CommentsSection carId={car.id} carSlug={car.slug} />
+      </div>
     </>
   );
 }
